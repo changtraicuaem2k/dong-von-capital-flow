@@ -60,10 +60,10 @@
     background:var(--line);
     margin-top:12px;
   }
-  .panel-trend{grid-column:1 / -1;}
+  .panel-trend,.panel-flow,.panel-predict{grid-column:1 / -1;}
   @media(max-width:900px){
     .grid{grid-template-columns:1fr;}
-    .panel-trend{grid-column:auto;}
+    .panel-trend,.panel-flow,.panel-predict{grid-column:auto;}
   }
 
   .panel{background:var(--panel); padding:16px; display:flex; flex-direction:column; min-height:280px;}
@@ -225,6 +225,55 @@
   .trend-name{font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .trend-right{text-align:right; flex-shrink:0;}
 
+  #flowList,#predictList{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+    gap:10px;
+  }
+  .flow-card,.predict-card{
+    background:var(--panel2);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:10px;
+    min-width:0;
+  }
+  .flow-top,.predict-top{
+    display:flex; justify-content:space-between; align-items:flex-start; gap:10px;
+    border-bottom:1px solid var(--line); padding-bottom:8px; margin-bottom:8px;
+  }
+  .flow-symbol,.predict-symbol{font-family:var(--mono); font-size:13px; font-weight:700;}
+  .flow-bias,.predict-bias{
+    font-family:var(--mono); font-size:10px; padding:3px 6px; border-radius:2px;
+    border:1px solid var(--line); white-space:nowrap;
+  }
+  .bias-long{color:var(--pos); border-color:rgba(63,182,140,0.45); background:rgba(63,182,140,0.08);}
+  .bias-short{color:var(--neg); border-color:rgba(214,91,74,0.45); background:rgba(214,91,74,0.08);}
+  .bias-wait,.bias-mixed{color:var(--warn); border-color:rgba(201,168,76,0.45); background:rgba(201,168,76,0.08);}
+  .flow-score{font-family:var(--mono); font-size:22px; color:var(--amber); line-height:1;}
+  .flow-score-label{font-family:var(--mono); font-size:9px; color:var(--muted); margin-top:2px;}
+  .flow-metrics,.predict-tfs{
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin-top:8px;
+  }
+  .trade-plan{
+    display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-top:8px;
+  }
+  .mini-metric,.tf-pred{
+    background:var(--bg); border:1px solid var(--line); border-radius:3px;
+    padding:7px 6px; min-width:0;
+  }
+  .plan-box{
+    background:var(--bg); border:1px solid var(--line); border-radius:3px;
+    padding:8px 6px; min-width:0;
+  }
+  .plan-label{font-family:var(--mono); font-size:9px; color:var(--muted); margin-bottom:4px;}
+  .plan-val{font-family:var(--mono); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .plan-note{font-family:var(--mono); font-size:9px; color:var(--muted); margin-top:8px; line-height:1.45;}
+  @media(max-width:700px){.trade-plan{grid-template-columns:repeat(2, 1fr);}}
+  .mini-label,.tf-label{font-family:var(--mono); font-size:9px; color:var(--muted); margin-bottom:4px;}
+  .mini-val,.tf-val{font-family:var(--mono); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .tf-note{font-family:var(--mono); font-size:9px; color:var(--muted); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .data-time{font-family:var(--mono); font-size:9px; color:var(--muted); margin-top:8px;}
+
   .footer{padding:16px 18px; color:var(--muted); font-size:10px; font-family:var(--mono); text-align:center; line-height:1.6;}
 </style>
 </head>
@@ -251,10 +300,10 @@
     <div class="panel-head">
       <div class="panel-head-left">
         <div class="panel-title-row">
-          <div class="panel-title">DEXSCREENER</div>
+          <div class="panel-title">COINGECKO SPOT</div>
           <span class="badge badge-live" id="dexBadge">🟢 LIVE · cập nhật mỗi 30s</span>
         </div>
-        <div class="panel-sub">GIÁ · THANH KHOẢN · bấm token để xem XU HƯỚNG</div>
+        <div class="panel-sub">GIÁ SPOT · 24H · MARKET RANK · bấm token để xem XU HƯỚNG</div>
       </div>
     </div>
     <div class="panel-stamp" id="dexStamp">Cập nhật lúc: —</div>
@@ -263,7 +312,7 @@
       <button onclick="addToken()">+ Thêm</button>
     </div>
     <div id="tokenList"></div>
-    <div class="note">Nguồn: api.dexscreener.com · Bấm token để mở XU HƯỚNG (lazy) · Watchlist dùng chung Binance · Tự refresh 30s</div>
+    <div class="note">Nguồn: api.coingecko.com · Giá spot theo coin ID chuẩn, tránh nhầm pair DEX · Binance Futures bên cạnh dùng mark price cho trade</div>
   </div>
 
   <div class="panel">
@@ -279,6 +328,36 @@
     <div class="panel-stamp" id="binStamp">Cập nhật lúc: —</div>
     <div id="binList"></div>
     <div class="note">Nguồn: fapi.binance.com · Bấm token mở nến 4h, RSI, L/S, OI trend · Cache 60s/token</div>
+  </div>
+
+  <div class="panel panel-flow">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <div class="panel-title-row">
+          <div class="panel-title">FLOW RADAR</div>
+          <span class="badge badge-live" id="flowBadge">🟢 LIVE · quét mỗi 5 phút</span>
+        </div>
+        <div class="panel-sub">BINANCE USDT-M · VOLUME SURGE · OI · MOMENTUM · FUNDING</div>
+      </div>
+    </div>
+    <div class="panel-stamp" id="flowStamp">Cập nhật lúc: —</div>
+    <div id="flowList"></div>
+    <div class="note">Flow Radar ưu tiên đồng có thanh khoản lớn, volume tăng bất thường, OI tăng/giảm rõ và động lượng đồng thuận. CoinGecko Trending chỉ là xu hướng tìm kiếm, không phải dòng tiền thật.</div>
+  </div>
+
+  <div class="panel panel-predict">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <div class="panel-title-row">
+          <div class="panel-title">DỰ ĐOÁN TRADE</div>
+          <span class="badge badge-live" id="predictBadge">🟢 LIVE · cập nhật mỗi 60s</span>
+        </div>
+        <div class="panel-sub">WATCHLIST · KHUNG 15P / 1H / 4H · ƯU TIÊN LONG / SHORT / WAIT</div>
+      </div>
+    </div>
+    <div class="panel-stamp" id="predictStamp">Cập nhật lúc: —</div>
+    <div id="predictList"></div>
+    <div class="note">Tín hiệu dùng EMA 9/21, RSI, biến động giá, volume và OI. Nến cuối có thể là nến đang chạy nên tín hiệu ngắn hạn có thể đổi nhanh.</div>
   </div>
 
   <div class="panel panel-trend">
@@ -299,8 +378,8 @@
 </div>
 
 <div class="footer">
-  Dexscreener & Binance: mỗi 30s · Trending CoinGecko: mỗi 5 phút · XU HƯỚNG token: lazy + cache 60s · Không phải lời khuyên đầu tư<br>
-  Các nguồn dữ liệu có độ trễ và tần suất cập nhật khác nhau — xem nhãn từng mục để biết chi tiết.
+  CoinGecko Spot & Binance: mỗi 30s · Dự đoán watchlist: mỗi 60s · Flow Radar & Trending CoinGecko: mỗi 5 phút · Không phải lời khuyên đầu tư<br>
+  CoinGecko Spot dùng để đối chiếu giá thị trường spot; Binance Futures/Flow Radar dùng cho mark price, OI, funding và dòng tiền trade.
 </div>
 
 <script>
@@ -317,6 +396,16 @@ function formatTime(d){
 function formatTimeShort(d){
   return d.toLocaleTimeString('vi-VN', {hour12:false, hour:'2-digit', minute:'2-digit'});
 }
+function formatDateTime(d){
+  return d.toLocaleString('vi-VN', {
+    hour12:false,
+    day:'2-digit',
+    month:'2-digit',
+    hour:'2-digit',
+    minute:'2-digit',
+    second:'2-digit'
+  });
+}
 function escapeHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -330,6 +419,14 @@ function fmtUsd(n){
   if(n >= 1e3) return (n/1e3).toFixed(1) + 'K';
   return n.toFixed(0);
 }
+function fmtPrice(n){
+  const v = Number(n);
+  if(!isFinite(v)) return '—';
+  if(v >= 1000) return v.toLocaleString('en-US', {maximumFractionDigits: 2});
+  if(v >= 1) return v.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4});
+  if(v >= 0.01) return v.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 6});
+  return v.toPrecision(4);
+}
 function fmtFunding(rate){
   const pct = Number(rate) * 100;
   if(!isFinite(pct)) return '—';
@@ -342,6 +439,29 @@ function fmtPct(n){
 function pctClass(n){
   if(n == null || !isFinite(n)) return 'chg-muted';
   return n >= 0 ? 'chg-pos' : 'chg-neg';
+}
+function clamp(n, min, max){
+  return Math.max(min, Math.min(max, n));
+}
+function avg(nums){
+  const arr = nums.filter(n => isFinite(n));
+  if(!arr.length) return null;
+  return arr.reduce((a,b) => a + b, 0) / arr.length;
+}
+function lastOf(arr){
+  return arr && arr.length ? arr[arr.length - 1] : null;
+}
+async function mapLimit(items, limit, fn){
+  const out = new Array(items.length);
+  let idx = 0;
+  async function worker(){
+    while(idx < items.length){
+      const i = idx++;
+      out[i] = await fn(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
 }
 
 async function storeGet(key){
@@ -408,7 +528,8 @@ async function loadWatchlist(){
   watchlist = (await storeGet('dv_watchlist')) || ['NEAR', 'SOL', 'BTC'];
   await Promise.all([
     renderTokens({ showLoading: true }),
-    renderBinance({ showLoading: true })
+    renderBinance({ showLoading: true }),
+    renderPredictions({ showLoading: true })
   ]);
 }
 
@@ -422,7 +543,8 @@ async function addToken(){
   await storeSet('dv_watchlist', watchlist);
   await Promise.all([
     renderTokens({ showLoading: true }),
-    renderBinance({ showLoading: true })
+    renderBinance({ showLoading: true }),
+    renderPredictions({ showLoading: true })
   ]);
 }
 
@@ -436,7 +558,8 @@ async function removeToken(sym, ev){
   await storeSet('dv_watchlist', watchlist);
   await Promise.all([
     renderTokens({ showLoading: true }),
-    renderBinance({ showLoading: true })
+    renderBinance({ showLoading: true }),
+    renderPredictions({ showLoading: true })
   ]);
 }
 
@@ -450,52 +573,83 @@ function toBinanceSymbol(entry){
   return s + 'USDT';
 }
 
-// ---------- DEXSCREENER ----------
+// ---------- COINGECKO SPOT ----------
 const DEX_REFRESH_MS = 30000;
-const DEX_LIVE = '🟢 LIVE · cập nhật mỗi 30s';
+const DEX_LIVE = '🟢 LIVE · CoinGecko spot 30s';
+const CG_ID_OVERRIDES = {
+  BTC:'bitcoin', XBT:'bitcoin', ETH:'ethereum', SOL:'solana', NEAR:'near', PEPE:'pepe',
+  BNB:'binancecoin', XRP:'ripple', DOGE:'dogecoin', ADA:'cardano', AVAX:'avalanche-2',
+  LINK:'chainlink', DOT:'polkadot', LTC:'litecoin', BCH:'bitcoin-cash', TRX:'tron',
+  TON:'the-open-network', SUI:'sui', APT:'aptos', ARB:'arbitrum', OP:'optimism',
+  INJ:'injective-protocol', SEI:'sei-network', WIF:'dogwifcoin', BONK:'bonk',
+  FET:'artificial-superintelligence-alliance', RNDR:'render-token', RENDER:'render-token',
+  TIA:'celestia', JUP:'jupiter-exchange-solana', PYTH:'pyth-network', ONDO:'ondo-finance'
+};
+let cgIdCache = {};
 let dexLastOkAt = null;
 let dexCache = {};
 let dexRefreshing = false;
 
-async function fetchDexscreener(query){
+function normalizeSymbol(entry){
+  return String(entry || '').toUpperCase().replace(/USDT$/,'').replace(/[^A-Z0-9]/g, '');
+}
+
+async function resolveCoinGeckoId(sym){
+  const clean = normalizeSymbol(sym);
+  if(!clean || String(sym).startsWith('0x')) return null;
+  if(CG_ID_OVERRIDES[clean]) return CG_ID_OVERRIDES[clean];
+  if(cgIdCache[clean]) return cgIdCache[clean];
+  const data = await fetchJson(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(clean)}`, 12000);
+  const coins = data.coins || [];
+  const exact = coins.find(c => String(c.symbol || '').toUpperCase() === clean);
+  const picked = exact || coins[0];
+  if(!picked || !picked.id) return null;
+  cgIdCache[clean] = picked.id;
+  return picked.id;
+}
+
+async function fetchCoinGeckoSpot(query){
   try{
-    const data = await fetchJson(
-      `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(query)}`,
+    const id = await resolveCoinGeckoId(query);
+    if(!id) return { ok: true, item: null };
+    const rows = await fetchJson(
+      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${encodeURIComponent(id)}&price_change_percentage=1h,24h&sparkline=false`,
       12000
     );
-    if(!data.pairs || data.pairs.length === 0) return { ok: true, pair: null };
-    const sorted = data.pairs.slice().sort((a,b) => (b.liquidity?.usd||0) - (a.liquidity?.usd||0));
-    return { ok: true, pair: sorted[0] };
+    const item = Array.isArray(rows) ? rows[0] : null;
+    return { ok: true, item: item ? { ...item, cgId: id } : null };
   }catch(e){
-    return { ok: false, error: true, pair: null };
+    return { ok: false, error: true, item: null };
   }
 }
 
-function buildTokenHtml(sym, pair, panel){
+function buildTokenHtml(sym, item, panel){
   const isOpen = expanded && expanded.sym === sym && expanded.panel === panel;
   const chev = `<span class="chev ${isOpen ? 'open' : ''}">▶</span>`;
   let main;
-  if(!pair){
+  if(!item){
     main = `
       <div class="token-row clickable ${isOpen ? 'expanded' : ''}" onclick="toggleXh('${escapeAttr(sym)}','${panel}',event)">
         <div>
           <div class="token-name">${escapeHtml(sym)}${chev}</div>
-          <div class="token-meta">không tìm thấy · <span class="xh-hint">bấm để xem XU HƯỚNG</span></div>
+          <div class="token-meta">không map được CoinGecko ID · <span class="xh-hint">bấm để xem XU HƯỚNG Binance nếu có</span></div>
         </div>
         <button class="remove-btn" onclick="removeToken('${escapeAttr(sym)}',event)" title="Xóa">✕</button>
       </div>`;
   } else {
-    const chg = pair.priceChange?.h24 ?? 0;
+    const chg = item.price_change_percentage_24h ?? 0;
     const chgClass = chg >= 0 ? 'chg-pos' : 'chg-neg';
     const chgSign = chg >= 0 ? '+' : '';
-    const liq = pair.liquidity?.usd ? (pair.liquidity.usd/1000).toFixed(0)+'K' : '—';
-    const price = Number(pair.priceUsd);
-    const priceStr = isFinite(price) ? price.toFixed(price < 1 ? 5 : 3) : '—';
+    const price = Number(item.current_price);
+    const priceStr = fmtPrice(price);
+    const vol = Number(item.total_volume);
+    const rank = item.market_cap_rank != null ? '#' + item.market_cap_rank : '—';
+    const cgUrl = item.cgId ? `https://www.coingecko.com/vi/ty_gia/${encodeURIComponent(item.cgId)}` : 'https://www.coingecko.com/';
     main = `
       <div class="token-row clickable ${isOpen ? 'expanded' : ''}" onclick="toggleXh('${escapeAttr(sym)}','${panel}',event)">
         <div>
-          <div class="token-name">${escapeHtml(pair.baseToken?.symbol || sym)}${chev}</div>
-          <div class="token-meta">${escapeHtml(pair.dexId || '')} · Liq $${liq} · <span class="xh-hint">XU HƯỚNG</span></div>
+          <div class="token-name">${escapeHtml((item.symbol || sym).toUpperCase())}${chev}</div>
+          <div class="token-meta">CoinGecko ${rank} · Vol24h $${fmtUsd(vol)} · <a class="ref-link" href="${cgUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">CG</a> · <span class="xh-hint">XU HƯỚNG</span></div>
         </div>
         <div class="token-right">
           <div class="price">$${priceStr}</div>
@@ -513,9 +667,9 @@ function paintDexFromCache(){
   let html = '';
   const changes = [];
   watchlist.forEach(sym => {
-    const pair = Object.prototype.hasOwnProperty.call(dexCache, sym) ? dexCache[sym] : null;
-    html += buildTokenHtml(sym, pair, 'dex');
-    if(pair) changes.push(pair.priceChange?.h24 ?? 0);
+    const item = Object.prototype.hasOwnProperty.call(dexCache, sym) ? dexCache[sym] : null;
+    html += buildTokenHtml(sym, item, 'dex');
+    if(item) changes.push(item.price_change_percentage_24h ?? 0);
   });
   list.innerHTML = html;
   updatePulse(changes);
@@ -538,19 +692,19 @@ async function renderTokens(opts){
   if(showLoading && !hasCache) list.innerHTML = '<div class="loading">Đang tải dữ liệu...</div>';
 
   try{
-    const results = await Promise.all(watchlist.map(sym => fetchDexscreener(sym)));
+    const results = await Promise.all(watchlist.map(sym => fetchCoinGeckoSpot(sym)));
     const anyError = results.some(r => r.error);
     const anyOk = results.some(r => r.ok);
     if(anyError && !anyOk){
       setPanelError('dexBadge', 'dexStamp', dexLastOkAt);
       if(hasCache) paintDexFromCache();
       else {
-        list.innerHTML = '<div class="empty">Không tải được Dexscreener. Thử lại sau.</div>';
+        list.innerHTML = '<div class="empty">Không tải được CoinGecko Spot. Thử lại sau.</div>';
         updatePulse([]);
       }
       return;
     }
-    results.forEach((r, i) => { if(r.ok) dexCache[watchlist[i]] = r.pair; });
+    results.forEach((r, i) => { if(r.ok) dexCache[watchlist[i]] = r.item; });
     paintDexFromCache();
     if(anyError) setPanelError('dexBadge', 'dexStamp', dexLastOkAt);
     else {
@@ -785,6 +939,435 @@ async function renderTrending(opts){
   }
 }
 
+// ---------- FLOW RADAR + TRADE PREDICTION ----------
+const PRED_REFRESH_MS = 60000;
+const FLOW_REFRESH_MS = 5 * 60 * 1000;
+const PRED_LIVE = '🟢 LIVE · cập nhật mỗi 60s';
+const FLOW_LIVE = '🟢 LIVE · quét mỗi 5 phút';
+let predLastOkAt = null;
+let flowLastOkAt = null;
+let predCache = {};
+let flowCache = [];
+let predRefreshing = false;
+let flowRefreshing = false;
+
+async function fetchKlines(pair, interval, limit){
+  return fetchJson(
+    `https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(pair)}&interval=${interval}&limit=${limit}`,
+    15000
+  );
+}
+
+function calcOiChangePct(rows){
+  if(!Array.isArray(rows) || rows.length < 2) return null;
+  const sorted = rows.slice().sort((a,b) => Number(a.timestamp) - Number(b.timestamp));
+  const prev = Number(sorted[0].sumOpenInterestValue);
+  const curr = Number(sorted[sorted.length - 1].sumOpenInterestValue);
+  if(!isFinite(prev) || !isFinite(curr) || prev === 0) return null;
+  return ((curr - prev) / prev) * 100;
+}
+
+function emaLast(values, period){
+  if(!values || values.length < period) return null;
+  const k = 2 / (period + 1);
+  let ema = values.slice(0, period).reduce((a,b) => a + b, 0) / period;
+  for(let i = period; i < values.length; i++) ema = values[i] * k + ema * (1 - k);
+  return ema;
+}
+
+function calcATR(candles, period){
+  if(!candles || candles.length < period + 1) return null;
+  const trs = [];
+  for(let i = 1; i < candles.length; i++){
+    const c = candles[i];
+    const prev = candles[i - 1];
+    trs.push(Math.max(c.high - c.low, Math.abs(c.high - prev.close), Math.abs(c.low - prev.close)));
+  }
+  const recent = trs.slice(-period);
+  return avg(recent);
+}
+
+function recentRange(candles, count){
+  const recent = (candles || []).slice(-count);
+  if(!recent.length) return { high: null, low: null };
+  return {
+    high: Math.max(...recent.map(c => c.high).filter(isFinite)),
+    low: Math.min(...recent.map(c => c.low).filter(isFinite))
+  };
+}
+
+function fmtTradePrice(n){
+  const v = Number(n);
+  if(!isFinite(v)) return '—';
+  if(v >= 1000) return v.toLocaleString('en-US', {maximumFractionDigits: 1});
+  if(v >= 10) return v.toLocaleString('en-US', {maximumFractionDigits: 3});
+  if(v >= 1) return v.toLocaleString('en-US', {maximumFractionDigits: 4});
+  if(v >= 0.01) return v.toLocaleString('en-US', {maximumFractionDigits: 5});
+  return v.toPrecision(4);
+}
+
+function classifyBias(score){
+  if(score >= 2) return { text: 'LONG', cls: 'bias-long' };
+  if(score <= -2) return { text: 'SHORT', cls: 'bias-short' };
+  return { text: 'WAIT', cls: 'bias-wait' };
+}
+
+function classifyTrend(frames, weighted){
+  const f15 = frames.find(f => f.label === '15P')?.bias.text || 'WAIT';
+  const f1 = frames.find(f => f.label === '1H')?.bias.text || 'WAIT';
+  const f4 = frames.find(f => f.label === '4H')?.bias.text || 'WAIT';
+  if(f4 === 'LONG' && f1 === 'LONG') return { text: f15 === 'LONG' ? 'TĂNG MẠNH' : 'TĂNG, chờ nhịp vào', cls: 'bias-long' };
+  if(f4 === 'SHORT' && f1 === 'SHORT') return { text: f15 === 'SHORT' ? 'GIẢM MẠNH' : 'GIẢM, chờ nhịp vào', cls: 'bias-short' };
+  if(weighted >= 2) return { text: 'NGHIÊNG LONG', cls: 'bias-long' };
+  if(weighted <= -2) return { text: 'NGHIÊNG SHORT', cls: 'bias-short' };
+  return { text: 'SIDEWAY / CHỜ', cls: 'bias-wait' };
+}
+
+function buildTradePlan({ mark, candles15, candles1, candles4, frames, overall, trend, weighted, funding, oiFastPct }){
+  const fallbackCandle = lastOf(candles15) || lastOf(candles1) || lastOf(candles4);
+  let price = Number(mark);
+  if(!isFinite(price) || price <= 0) price = fallbackCandle ? Number(fallbackCandle.close) : null;
+  const atr15 = calcATR(candles15, 14);
+  const atr1 = calcATR(candles1, 14);
+  const range15 = recentRange(candles15, 24);
+  const range1 = recentRange(candles1, 24);
+  if(!isFinite(price) || price <= 0){
+    return {
+      side: { text: 'WAIT', cls: 'bias-wait' },
+      entry: 'Thiếu giá',
+      tp1: '—',
+      tp2: '—',
+      sl: '—',
+      rr: '—',
+      note: 'Chưa có mark price/nến đủ tin cậy để tính entry.'
+    };
+  }
+  const atrBase = isFinite(atr15) ? atr15 : (isFinite(atr1) ? atr1 / 4 : price * 0.006);
+  const risk = Math.max(atrBase * 1.25, price * 0.0045);
+  const rr1 = 1.45;
+  const rr2 = 2.3;
+  const direction = overall.text;
+  const tooHotLong = direction === 'LONG' && funding != null && funding > 0.001 && oiFastPct != null && oiFastPct > 2;
+  const tooHotShort = direction === 'SHORT' && funding != null && funding < -0.001 && oiFastPct != null && oiFastPct > 2;
+  const blocked = trend.cls === 'bias-wait' || Math.abs(weighted) < 2 || tooHotLong || tooHotShort;
+
+  if(blocked){
+    const high = isFinite(range15.high) ? range15.high : range1.high;
+    const low = isFinite(range15.low) ? range15.low : range1.low;
+    return {
+      side: { text: 'WAIT', cls: 'bias-wait' },
+      entry: high && low ? `Break ${fmtTradePrice(high)} / ${fmtTradePrice(low)}` : 'Chờ setup',
+      tp1: '—',
+      tp2: '—',
+      sl: '—',
+      rr: '—',
+      note: tooHotLong || tooHotShort
+        ? 'Funding/OI đang nóng, ưu tiên chờ reset thay vì đuổi giá.'
+        : 'Chưa đủ đồng thuận 15P-1H-4H. Chờ phá vùng hoặc retest rõ hơn.'
+    };
+  }
+
+  const long = direction === 'LONG';
+  const entryMid = long ? price - atrBase * 0.18 : price + atrBase * 0.18;
+  const entryA = long ? entryMid - atrBase * 0.25 : entryMid + atrBase * 0.25;
+  const entryB = long ? entryMid + atrBase * 0.15 : entryMid - atrBase * 0.15;
+  const sl = long ? entryMid - risk : entryMid + risk;
+  const tp1 = long ? entryMid + risk * rr1 : entryMid - risk * rr1;
+  const tp2 = long ? entryMid + risk * rr2 : entryMid - risk * rr2;
+  return {
+    side: { text: long ? 'LONG' : 'SHORT', cls: long ? 'bias-long' : 'bias-short' },
+    entry: `${fmtTradePrice(Math.min(entryA, entryB))} - ${fmtTradePrice(Math.max(entryA, entryB))}`,
+    tp1: fmtTradePrice(tp1),
+    tp2: fmtTradePrice(tp2),
+    sl: fmtTradePrice(sl),
+    rr: `1:${rr1.toFixed(1)} / 1:${rr2.toFixed(1)}`,
+    note: `Entry theo mark ${fmtTradePrice(price)} + ATR 15P. Ưu tiên vào khi giá retest vùng entry, không FOMO nến kéo mạnh.`
+  };
+}
+
+function analyzeFrame(candles, label, oiChangePct){
+  if(!candles || candles.length < 24){
+    return { label, bias: { text: 'WAIT', cls: 'bias-wait' }, score: 0, confidence: 0, changePct: null, rsi: null, volRatio: null, note: 'thiếu dữ liệu' };
+  }
+  const closes = candles.map(c => c.close);
+  const last = lastOf(candles);
+  const prev = candles[candles.length - 2];
+  const changePct = prev ? pctChange(prev.close, last.close) : null;
+  const rsi = calcRSI(closes, 14);
+  const ema9 = emaLast(closes, 9);
+  const ema21 = emaLast(closes, 21);
+  const prevVols = candles.slice(-22, -2).map(c => c.quoteVolume || c.volume);
+  const baseVol = avg(prevVols);
+  const volRatio = baseVol ? (last.quoteVolume || last.volume) / baseVol : null;
+  const dir = changePct != null ? Math.sign(changePct) : 0;
+  let score = 0;
+
+  if(ema9 != null && ema21 != null) score += ema9 > ema21 ? 1 : -1;
+  if(changePct != null){
+    if(changePct > 0.12) score += 1;
+    if(changePct < -0.12) score -= 1;
+  }
+  if(rsi != null){
+    if(rsi > 55 && rsi < 72) score += 1;
+    if(rsi < 45 && rsi > 28) score -= 1;
+    if(rsi >= 78) score -= 1;
+    if(rsi <= 22) score += 1;
+  }
+  if(volRatio != null && volRatio > 1.3 && dir !== 0) score += dir;
+  if(oiChangePct != null && Math.abs(oiChangePct) > 0.4 && dir !== 0){
+    score += oiChangePct > 0 ? dir : -dir * 0.5;
+  }
+
+  const bias = classifyBias(score);
+  const confidence = clamp(Math.round(Math.abs(score) / 5 * 100), 15, 92);
+  const note = `Δ ${fmtPct(changePct)} · RSI ${rsi != null ? rsi.toFixed(0) : '—'} · Vol ${volRatio != null ? volRatio.toFixed(1) + 'x' : '—'}`;
+  return { label, bias, score, confidence, changePct, rsi, volRatio, note };
+}
+
+async function fetchPrediction(sym){
+  const pair = toBinanceSymbol(sym);
+  if(!pair) return { sym, missing: true, reason: 'Không map được Binance Futures' };
+  try{
+    const results = await Promise.allSettled([
+      fetchKlines(pair, '15m', 80),
+      fetchKlines(pair, '1h', 80),
+      fetchKlines(pair, '4h', 80),
+      fetchJson(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${encodeURIComponent(pair)}&period=5m&limit=13`, 12000),
+      fetchJson(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${encodeURIComponent(pair)}&period=1h&limit=5`, 12000),
+      fetchJson(`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${encodeURIComponent(pair)}`, 12000)
+    ]);
+    const k15 = results[0].status === 'fulfilled' ? parseKlines(results[0].value) : null;
+    const k1 = results[1].status === 'fulfilled' ? parseKlines(results[1].value) : null;
+    const k4 = results[2].status === 'fulfilled' ? parseKlines(results[2].value) : null;
+    const oi5 = results[3].status === 'fulfilled' ? calcOiChangePct(results[3].value) : null;
+    const oi1 = results[4].status === 'fulfilled' ? calcOiChangePct(results[4].value) : null;
+    const prem = results[5].status === 'fulfilled' ? results[5].value : null;
+    const mark = prem ? Number(prem.markPrice) : null;
+    const frames = [
+      analyzeFrame(k15, '15P', oi5),
+      analyzeFrame(k1, '1H', oi5),
+      analyzeFrame(k4, '4H', oi1)
+    ];
+    const weighted = frames.reduce((sum, f, i) => sum + f.score * [1.2, 1, 0.8][i], 0);
+    const overall = classifyBias(weighted);
+    const trend = classifyTrend(frames, weighted);
+    const funding = prem ? Number(prem.lastFundingRate) : null;
+    const plan = buildTradePlan({
+      mark,
+      candles15: k15 || [],
+      candles1: k1 || [],
+      candles4: k4 || [],
+      frames,
+      overall,
+      trend,
+      weighted,
+      funding,
+      oiFastPct: oi5
+    });
+    const lastCandle = [lastOf(k15), lastOf(k1), lastOf(k4)].filter(Boolean).sort((a,b) => b.closeTime - a.closeTime)[0];
+    return {
+      sym, pair, frames, overall, trend, plan, weighted,
+      oiFastPct: oi5,
+      oiSlowPct: oi1,
+      funding,
+      mark,
+      dataTime: lastCandle ? new Date(lastCandle.t) : new Date(),
+      updatedAt: new Date(),
+      error: results.slice(0,3).some(r => r.status === 'rejected')
+    };
+  }catch(e){
+    return { sym, pair, error: true, reason: 'Không tải được dữ liệu dự đoán' };
+  }
+}
+
+function paintPredictions(){
+  const el = document.getElementById('predictList');
+  if(watchlist.length === 0){
+    el.innerHTML = '<div class="empty">Thêm token vào watchlist để xem dự đoán.</div>';
+    return;
+  }
+  const rows = watchlist.map(sym => predCache[sym]).filter(Boolean);
+  if(rows.length === 0){
+    el.innerHTML = '<div class="loading">Đang tải dự đoán...</div>';
+    return;
+  }
+  el.innerHTML = rows.map(row => {
+    if(row.missing || row.error && !row.frames){
+      return `<div class="predict-card">
+        <div class="predict-top"><div><div class="predict-symbol">${escapeHtml(row.sym)}</div><div class="token-meta">${escapeHtml(row.reason || 'Không có dữ liệu')}</div></div><span class="predict-bias bias-wait">WAIT</span></div>
+      </div>`;
+    }
+    const frames = row.frames || [];
+    const plan = row.plan || { side: row.overall, entry: '—', tp1: '—', tp2: '—', sl: '—', rr: '—', note: 'Chưa có trade plan.' };
+    const trend = row.trend || { text: 'CHỜ', cls: 'bias-wait' };
+    return `<div class="predict-card">
+      <div class="predict-top">
+        <div>
+          <div class="predict-symbol">${escapeHtml(row.pair || row.sym)}</div>
+          <div class="token-meta">Mark $${fmtTradePrice(row.mark)} · OI 1H ${fmtPct(row.oiFastPct)} · FR ${fmtFunding(row.funding)}</div>
+        </div>
+        <span class="predict-bias ${trend.cls}">${trend.text}</span>
+      </div>
+      <div class="trade-plan">
+        <div class="plan-box"><div class="plan-label">SIDE</div><div class="plan-val ${plan.side.cls}">${escapeHtml(plan.side.text)}</div></div>
+        <div class="plan-box"><div class="plan-label">ENTRY</div><div class="plan-val">${escapeHtml(plan.entry)}</div></div>
+        <div class="plan-box"><div class="plan-label">TP1 / TP2</div><div class="plan-val chg-pos">${escapeHtml(plan.tp1)} / ${escapeHtml(plan.tp2)}</div></div>
+        <div class="plan-box"><div class="plan-label">SL</div><div class="plan-val chg-neg">${escapeHtml(plan.sl)}</div></div>
+      </div>
+      <div class="predict-tfs">
+        ${frames.map(f => `<div class="tf-pred">
+          <div class="tf-label">${escapeHtml(f.label)}</div>
+          <div class="tf-val ${f.bias.cls}">${f.bias.text} ${f.confidence}%</div>
+          <div class="tf-note">${escapeHtml(f.note)}</div>
+        </div>`).join('')}
+      </div>
+      <div class="plan-note">RR ${escapeHtml(plan.rr)} · ${escapeHtml(plan.note)}</div>
+      <div class="data-time">Nến hiện tại: ${formatDateTime(row.dataTime)} · lấy lúc ${formatTime(row.updatedAt)}</div>
+    </div>`;
+  }).join('');
+}
+
+async function renderPredictions(opts){
+  const showLoading = opts && opts.showLoading;
+  const el = document.getElementById('predictList');
+  if(predRefreshing) return;
+  if(watchlist.length === 0){
+    el.innerHTML = '<div class="empty">Thêm token vào watchlist để xem dự đoán.</div>';
+    predLastOkAt = new Date();
+    setPanelOk('predictBadge', 'predictStamp', PRED_LIVE, predLastOkAt);
+    return;
+  }
+  predRefreshing = true;
+  if(showLoading) el.innerHTML = '<div class="loading">Đang tải dự đoán 15P / 1H / 4H...</div>';
+  try{
+    const results = await mapLimit(watchlist, 4, sym => fetchPrediction(sym));
+    results.forEach(r => { predCache[r.sym] = r; });
+    paintPredictions();
+    predLastOkAt = new Date();
+    const anyError = results.some(r => r.error);
+    if(anyError) setPanelError('predictBadge', 'predictStamp', predLastOkAt);
+    else setPanelOk('predictBadge', 'predictStamp', PRED_LIVE, predLastOkAt);
+  } finally {
+    predRefreshing = false;
+  }
+}
+
+function flowBiasFromMomentum(m15, m1, m4, oi){
+  const impulse = (Number(m15) || 0) * 1.2 + (Number(m1) || 0) + (Number(m4) || 0) * 0.7;
+  if(impulse > 0.35 && (oi == null || oi >= -0.3)) return { text: 'LONG FLOW', cls: 'bias-long' };
+  if(impulse < -0.35 && (oi == null || oi >= -0.3)) return { text: 'SHORT FLOW', cls: 'bias-short' };
+  return { text: 'MIXED', cls: 'bias-mixed' };
+}
+
+async function fetchFlowCandidate(item){
+  const pair = item.symbol;
+  try{
+    const results = await Promise.allSettled([
+      fetchKlines(pair, '15m', 32),
+      fetchKlines(pair, '1h', 12),
+      fetchJson(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${encodeURIComponent(pair)}&period=5m&limit=13`, 12000),
+      fetchJson(`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${encodeURIComponent(pair)}`, 12000)
+    ]);
+    const k15 = results[0].status === 'fulfilled' ? parseKlines(results[0].value) : [];
+    const k1 = results[1].status === 'fulfilled' ? parseKlines(results[1].value) : [];
+    if(k15.length < 8) return null;
+    const last15 = lastOf(k15);
+    const price15 = pctChange(k15[Math.max(0, k15.length - 2)].close, last15.close);
+    const price1h = pctChange(k15[Math.max(0, k15.length - 5)].close, last15.close);
+    const price4h = k1.length >= 5 ? pctChange(k1[k1.length - 5].close, lastOf(k1).close) : null;
+    const recentVol = avg(k15.slice(-4).map(c => c.quoteVolume || c.volume));
+    const baseVol = avg(k15.slice(0, -4).map(c => c.quoteVolume || c.volume));
+    const volRatio = baseVol ? recentVol / baseVol : null;
+    const oiChangePct = results[2].status === 'fulfilled' ? calcOiChangePct(results[2].value) : null;
+    const prem = results[3].status === 'fulfilled' ? results[3].value : null;
+    const funding = prem ? Number(prem.lastFundingRate) : null;
+    const quoteVolume = Number(item.quoteVolume);
+    const liquidityScore = clamp(Math.log10(Math.max(quoteVolume, 1) / 1e6) * 8, 0, 24);
+    const volumeScore = volRatio != null ? clamp((volRatio - 1) * 18, -8, 26) : 0;
+    const oiScore = oiChangePct != null ? clamp(Math.abs(oiChangePct) * 3, 0, 24) : 0;
+    const momentumScore = clamp(Math.abs(Number(price1h) || 0) * 4 + Math.abs(Number(price4h) || 0) * 2, 0, 20);
+    const fundingPenalty = funding != null && Math.abs(funding) > 0.001 ? 8 : 0;
+    const score = clamp(Math.round(20 + liquidityScore + volumeScore + oiScore + momentumScore - fundingPenalty), 0, 100);
+    return {
+      pair,
+      score,
+      bias: flowBiasFromMomentum(price15, price1h, price4h, oiChangePct),
+      quoteVolume,
+      volRatio,
+      oiChangePct,
+      price15,
+      price1h,
+      price4h,
+      funding,
+      dataTime: new Date(last15.t),
+      updatedAt: new Date()
+    };
+  }catch(e){
+    return null;
+  }
+}
+
+function paintFlow(){
+  const el = document.getElementById('flowList');
+  if(!flowCache || flowCache.length === 0){
+    el.innerHTML = '<div class="empty">Chưa có dữ liệu Flow Radar.</div>';
+    return;
+  }
+  el.innerHTML = flowCache.slice(0, 12).map((r, i) => `
+    <div class="flow-card">
+      <div class="flow-top">
+        <div>
+          <div class="flow-symbol">#${i + 1} ${escapeHtml(r.pair)}</div>
+          <div class="token-meta">Vol24h $${fmtUsd(r.quoteVolume)} · FR ${fmtFunding(r.funding)}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="flow-score">${r.score}</div>
+          <div class="flow-score-label">FLOW SCORE</div>
+        </div>
+      </div>
+      <span class="flow-bias ${r.bias.cls}">${r.bias.text}</span>
+      <div class="flow-metrics">
+        <div class="mini-metric"><div class="mini-label">15P</div><div class="mini-val ${pctClass(r.price15)}">${fmtPct(r.price15)}</div></div>
+        <div class="mini-metric"><div class="mini-label">1H</div><div class="mini-val ${pctClass(r.price1h)}">${fmtPct(r.price1h)}</div></div>
+        <div class="mini-metric"><div class="mini-label">4H</div><div class="mini-val ${pctClass(r.price4h)}">${fmtPct(r.price4h)}</div></div>
+        <div class="mini-metric"><div class="mini-label">VOL SURGE</div><div class="mini-val ${r.volRatio != null && r.volRatio >= 1 ? 'chg-pos' : 'chg-muted'}">${r.volRatio != null ? r.volRatio.toFixed(1) + 'x' : '—'}</div></div>
+        <div class="mini-metric"><div class="mini-label">OI 1H</div><div class="mini-val ${pctClass(r.oiChangePct)}">${fmtPct(r.oiChangePct)}</div></div>
+        <div class="mini-metric"><div class="mini-label">DATA</div><div class="mini-val">${formatTime(r.dataTime)}</div></div>
+      </div>
+    </div>`).join('');
+}
+
+async function renderFlowRadar(opts){
+  const showLoading = opts && opts.showLoading;
+  const el = document.getElementById('flowList');
+  if(flowRefreshing) return;
+  flowRefreshing = true;
+  if(showLoading && !flowCache.length) el.innerHTML = '<div class="loading">Đang quét dòng tiền futures...</div>';
+  try{
+    const ticker = await fetchJson('https://fapi.binance.com/fapi/v1/ticker/24hr', 15000);
+    const rows = Array.isArray(ticker) ? ticker : [];
+    const liquid = rows
+      .filter(r => /USDT$/.test(r.symbol) && !r.symbol.includes('_') && Number(r.quoteVolume) > 10000000)
+      .sort((a,b) => Number(b.quoteVolume) - Number(a.quoteVolume))
+      .slice(0, 35);
+    const watchPairs = watchlist.map(toBinanceSymbol).filter(Boolean);
+    watchPairs.forEach(pair => {
+      if(!liquid.some(r => r.symbol === pair)) liquid.push({ symbol: pair, quoteVolume: 0 });
+    });
+    const scanned = await mapLimit(liquid, 5, fetchFlowCandidate);
+    flowCache = scanned.filter(Boolean).sort((a,b) => b.score - a.score);
+    paintFlow();
+    flowLastOkAt = new Date();
+    setPanelOk('flowBadge', 'flowStamp', FLOW_LIVE, flowLastOkAt);
+  }catch(e){
+    setPanelError('flowBadge', 'flowStamp', flowLastOkAt);
+    if(flowCache.length) paintFlow();
+    else el.innerHTML = '<div class="empty">Không tải được Flow Radar. Thử lại sau.</div>';
+  } finally {
+    flowRefreshing = false;
+  }
+}
+
 // ============================================================
 // VIỆC 4 — XU HƯỚNG // TREND (accordion, lazy, cache 60s)
 // ============================================================
@@ -872,6 +1455,27 @@ function renderXhInto(slot, sym){
   }
 
   const tf = p.tf || {};
+  const tradeFrames = p.tradeFrames || [];
+  const tradePlan = p.tradePlan;
+  const tradeTrend = p.tradeTrend || { text: 'CHỜ', cls: 'bias-wait' };
+  const tradeHtml = tradeFrames.length ? `
+    <div style="margin-top:12px">
+      <div class="xh-section-title">DỰ ĐOÁN TRADE 15P / 1H / 4H</div>
+      ${tradePlan ? `<div class="trade-plan">
+        <div class="plan-box"><div class="plan-label">XU HƯỚNG</div><div class="plan-val ${tradeTrend.cls}">${escapeHtml(tradeTrend.text)}</div></div>
+        <div class="plan-box"><div class="plan-label">ENTRY</div><div class="plan-val">${escapeHtml(tradePlan.entry)}</div></div>
+        <div class="plan-box"><div class="plan-label">TP1 / TP2</div><div class="plan-val chg-pos">${escapeHtml(tradePlan.tp1)} / ${escapeHtml(tradePlan.tp2)}</div></div>
+        <div class="plan-box"><div class="plan-label">SL</div><div class="plan-val chg-neg">${escapeHtml(tradePlan.sl)}</div></div>
+      </div>
+      <div class="plan-note">RR ${escapeHtml(tradePlan.rr)} · ${escapeHtml(tradePlan.note)}</div>` : ''}
+      <div class="predict-tfs">
+        ${tradeFrames.map(f => `<div class="tf-pred">
+          <div class="tf-label">${escapeHtml(f.label)}</div>
+          <div class="tf-val ${f.bias.cls}">${f.bias.text} ${f.confidence}%</div>
+          <div class="tf-note">${escapeHtml(f.note)}</div>
+        </div>`).join('')}
+      </div>
+    </div>` : '';
   const longPct = p.longPct;
   const shortPct = p.shortPct;
   let lsHtml = '<div class="token-meta">Không có dữ liệu Long/Short</div>';
@@ -922,6 +1526,7 @@ function renderXhInto(slot, sym){
             <div class="xh-section-title">OPEN INTEREST vs 4H TRƯỚC</div>
             <div class="metric" style="margin-top:4px">${oiHtml}</div>
           </div>
+          ${tradeHtml}
         </div>
       </div>
       <div class="xh-signal ${sig.cls}">
@@ -965,14 +1570,16 @@ async function loadXhDetail(sym){
     const results = await Promise.allSettled([
       fetchJson(`https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(pair)}&interval=4h&limit=30`, 15000),
       fetchJson(`https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(pair)}&interval=1h&limit=168`, 15000),
+      fetchJson(`https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(pair)}&interval=15m&limit=80`, 15000),
       fetchJson(`https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=${encodeURIComponent(pair)}&period=1h&limit=1`, 12000),
       fetchJson(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${encodeURIComponent(pair)}&period=4h&limit=2`, 12000)
     ]);
 
     const k4 = results[0].status === 'fulfilled' ? results[0].value : null;
     const k1 = results[1].status === 'fulfilled' ? results[1].value : null;
-    const ls = results[2].status === 'fulfilled' ? results[2].value : null;
-    const oiHist = results[3].status === 'fulfilled' ? results[3].value : null;
+    const k15 = results[2].status === 'fulfilled' ? results[2].value : null;
+    const ls = results[3].status === 'fulfilled' ? results[3].value : null;
+    const oiHist = results[4].status === 'fulfilled' ? results[4].value : null;
 
     // symbol invalid → all fail with 400
     const allRejected = results.every(r => r.status === 'rejected');
@@ -997,6 +1604,7 @@ async function loadXhDetail(sym){
     if(!k4) notes.push('Thiếu nến 4h');
     if(!k1) notes.push('Thiếu nến 1h');
     else if(k1.length < 168) notes.push(`Nến 1h chỉ có ${k1.length}/168 (7D có thể thiếu)`);
+    if(!k15) notes.push('Thiếu nến 15m');
     if(!ls) notes.push('Thiếu Long/Short');
     if(!oiHist || oiHist.length < 2) notes.push('Thiếu OI hist');
 
@@ -1005,6 +1613,7 @@ async function loadXhDetail(sym){
     const rsi = closes4.length >= 15 ? calcRSI(closes4, 14) : null;
 
     const candles1 = k1 ? parseKlines(k1) : [];
+    const candles15 = k15 ? parseKlines(k15) : [];
     const tf = calcTimeframePct(candles1);
 
     let longPct = null, shortPct = null;
@@ -1026,6 +1635,27 @@ async function loadXhDetail(sym){
     }
 
     const funding = (binCache[sym] && !binCache[sym].missing) ? binCache[sym].funding : null;
+    const tradeFrames = [
+      analyzeFrame(candles15, '15P', null),
+      analyzeFrame(candles1, '1H', null),
+      analyzeFrame(candles, '4H', oiChangePct)
+    ];
+    const tradeWeighted = tradeFrames.reduce((sum, f, i) => sum + f.score * [1.2, 1, 0.8][i], 0);
+    const tradeOverall = classifyBias(tradeWeighted);
+    const tradeTrend = classifyTrend(tradeFrames, tradeWeighted);
+    const mark = (binCache[sym] && !binCache[sym].missing) ? binCache[sym].mark : null;
+    const tradePlan = buildTradePlan({
+      mark,
+      candles15,
+      candles1,
+      candles4: candles,
+      frames: tradeFrames,
+      overall: tradeOverall,
+      trend: tradeTrend,
+      weighted: tradeWeighted,
+      funding,
+      oiFastPct: oiChangePct
+    });
     const signal = buildSignal({
       priceUp: tf.h4 != null ? tf.h4 > 0 : (tf.h24 != null ? tf.h24 > 0 : null),
       oiUp: oiChangePct != null ? oiChangePct > 0 : null,
@@ -1047,6 +1677,9 @@ async function loadXhDetail(sym){
         shortPct,
         oiChangePct,
         funding,
+        tradeFrames,
+        tradeTrend,
+        tradePlan,
         signal,
         notes
       }
@@ -1074,7 +1707,9 @@ function parseKlines(raw){
     high: Number(k[2]),
     low: Number(k[3]),
     close: Number(k[4]),
-    volume: Number(k[5])
+    volume: Number(k[5]),
+    closeTime: Number(k[6]),
+    quoteVolume: Number(k[7])
   })).filter(c => isFinite(c.open) && isFinite(c.close));
 }
 
@@ -1200,7 +1835,10 @@ document.getElementById('tokenInput').addEventListener('keypress', e => { if(e.k
 
 (async function init(){
   await loadWatchlist();
-  await renderTrending({ showLoading: true });
+  await Promise.all([
+    renderTrending({ showLoading: true }),
+    renderFlowRadar({ showLoading: true })
+  ]);
 
   setInterval(() => {
     renderTokens({ showLoading: false });
@@ -1208,8 +1846,16 @@ document.getElementById('tokenInput').addEventListener('keypress', e => { if(e.k
   }, DEX_REFRESH_MS);
 
   setInterval(() => {
+    renderPredictions({ showLoading: false });
+  }, PRED_REFRESH_MS);
+
+  setInterval(() => {
     renderTrending({ showLoading: false });
   }, TREND_REFRESH_MS);
+
+  setInterval(() => {
+    renderFlowRadar({ showLoading: false });
+  }, FLOW_REFRESH_MS);
 })();
 </script>
 </body>
