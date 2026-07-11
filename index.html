@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DÒNG VỐN — Capital Flow Terminal</title>
+<style>
+  :root{
+    --bg:#0B0D10;
+    --panel:#12151A;
+    --panel2:#161A20;
+    --line:#242933;
+    --text:#E8E6E1;
+    --muted:#7C848F;
+    --amber:#D8A73F;
+    --amber-dim:#8A7136;
+    --pos:#3FB68C;
+    --neg:#D65B4A;
+    --warn:#C9A84C;
+    --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --sans: 'Inter', -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+    padding:0;
+  }
+  @font-face{font-family:'JetBrains Mono';src:local('JetBrains Mono');}
+
+  .topbar{
+    border-bottom:1px solid var(--line);
+    padding:14px 18px;
+    display:flex; justify-content:space-between; align-items:center;
+    position:sticky; top:0; background:var(--bg); z-index:10;
+  }
+  .brand{
+    font-family:var(--mono); font-size:15px; letter-spacing:3px; color:var(--amber);
+    display:flex; align-items:center; gap:8px;
+  }
+  .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--pos);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+  .clock{font-family:var(--mono); font-size:12px; color:var(--muted);}
+
+  .pulse-wrap{padding:16px 18px 8px;}
+  .pulse-label{font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:2px; margin-bottom:8px; display:flex; justify-content:space-between;}
+  .pulse-bar{height:28px; border-radius:3px; background:var(--panel); border:1px solid var(--line); position:relative; overflow:hidden; display:flex;}
+  .pulse-fill-neg, .pulse-fill-pos{height:100%; transition:width 0.6s ease;}
+  .pulse-fill-neg{background:linear-gradient(90deg, var(--neg), #A8422F);}
+  .pulse-fill-pos{background:linear-gradient(90deg, #2E8A6B, var(--pos));}
+  .pulse-mid{position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--muted); opacity:0.4;}
+  .pulse-readout{font-family:var(--mono); font-size:11px; text-align:center; margin-top:6px; color:var(--muted);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1px;
+    background:var(--line);
+    margin-top:12px;
+  }
+  .panel-trend{grid-column:1 / -1;}
+  @media(max-width:900px){
+    .grid{grid-template-columns:1fr;}
+    .panel-trend{grid-column:auto;}
+  }
+
+  .panel{background:var(--panel); padding:16px; display:flex; flex-direction:column; min-height:280px;}
+  .panel-head{
+    display:flex; justify-content:space-between; align-items:flex-start; gap:8px;
+    border-bottom:1px solid var(--line); padding-bottom:10px; margin-bottom:8px;
+  }
+  .panel-head-left{display:flex; flex-direction:column; gap:6px; min-width:0;}
+  .panel-title-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .panel-title{font-family:var(--mono); font-size:12px; letter-spacing:2px; color:var(--amber);}
+  .panel-sub{font-size:10px; color:var(--muted); font-family:var(--mono);}
+
+  .badge{
+    font-family:var(--mono); font-size:9px; letter-spacing:0.5px;
+    padding:2px 7px; border-radius:2px; white-space:nowrap;
+    border:1px solid transparent;
+  }
+  .badge-live{
+    color:var(--pos); border-color:rgba(63,182,140,0.35);
+    background:rgba(63,182,140,0.08);
+  }
+  .badge-error{
+    color:var(--neg); border-color:rgba(214,91,74,0.4);
+    background:rgba(214,91,74,0.1);
+  }
+  .panel-stamp{
+    font-family:var(--mono); font-size:10px; color:var(--muted);
+    margin-bottom:10px; min-height:14px;
+  }
+  .panel-stamp.error{color:var(--neg);}
+
+  .input-row{display:flex; gap:6px; margin-bottom:12px;}
+  input[type=text]{
+    flex:1; background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    padding:8px 10px; border-radius:3px; font-family:var(--mono); font-size:12px;
+  }
+  input:focus{outline:none; border-color:var(--amber-dim);}
+  button{
+    background:var(--panel2); border:1px solid var(--amber-dim); color:var(--amber);
+    padding:8px 12px; border-radius:3px; font-family:var(--mono); font-size:11px;
+    cursor:pointer; transition:all .15s;
+  }
+  button:hover{background:var(--amber-dim); color:var(--bg);}
+
+  .token-block{border-bottom:1px solid var(--line);}
+  .token-block:last-child{border-bottom:none;}
+  .token-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 0; font-size:12px;
+    gap:8px;
+  }
+  .token-row.clickable{cursor:pointer; border-radius:3px; margin:0 -4px; padding:10px 4px;}
+  .token-row.clickable:hover{background:rgba(255,255,255,0.03);}
+  .token-row.expanded{background:rgba(216,167,63,0.06);}
+  .token-name{font-weight:600;}
+  .token-meta{font-family:var(--mono); font-size:10px; color:var(--muted); margin-top:2px;}
+  .token-right{text-align:right; flex-shrink:0;}
+  .price{font-family:var(--mono); font-size:13px;}
+  .chg-pos{color:var(--pos);}
+  .chg-neg{color:var(--neg);}
+  .chg-warn{color:var(--warn);}
+  .chg-muted{color:var(--muted);}
+  .metric{font-family:var(--mono); font-size:12px;}
+  .metric-label{font-size:9px; color:var(--muted); letter-spacing:0.5px;}
+  .metrics-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; text-align:right;
+  }
+  .chev{
+    font-family:var(--mono); font-size:10px; color:var(--amber-dim);
+    margin-left:6px; display:inline-block; transition:transform .15s;
+  }
+  .chev.open{transform:rotate(90deg);}
+  .remove-btn{background:none; border:none; color:var(--muted); font-size:14px; padding:0 0 0 8px; cursor:pointer;}
+  .remove-btn:hover{color:var(--neg);}
+
+  .empty{color:var(--muted); font-size:12px; text-align:center; padding:24px 0; font-family:var(--mono);}
+  .loading{color:var(--muted); font-size:11px; font-family:var(--mono); text-align:center; padding:12px 0;}
+
+  .note{font-size:10px; color:var(--muted); margin-top:auto; padding-top:10px; line-height:1.5; font-family:var(--mono);}
+
+  .ref-link{color:var(--amber); text-decoration:none; font-family:var(--mono); font-size:11px;}
+  .ref-link:hover{text-decoration:underline;}
+
+  /* --- XU HƯỚNG expand --- */
+  .xh-panel{
+    background:var(--panel2);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:12px;
+    margin:0 0 12px;
+  }
+  .xh-head{
+    display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;
+    margin-bottom:8px;
+  }
+  .xh-title{font-family:var(--mono); font-size:11px; letter-spacing:1.5px; color:var(--amber);}
+  .xh-meta{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .xh-stamp{font-family:var(--mono); font-size:10px; color:var(--muted);}
+  .xh-stamp.error{color:var(--neg);}
+  .xh-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+  @media(max-width:700px){.xh-grid{grid-template-columns:1fr;}}
+  .xh-section-title{
+    font-family:var(--mono); font-size:9px; letter-spacing:1.5px; color:var(--muted);
+    margin-bottom:6px;
+  }
+  .xh-chart-wrap{
+    background:var(--bg); border:1px solid var(--line); border-radius:3px;
+    padding:6px; height:140px;
+  }
+  .xh-chart-wrap canvas{width:100%; height:100%; display:block;}
+  .xh-rsi{
+    font-family:var(--mono); font-size:13px; margin-top:8px;
+  }
+  .xh-tf{
+    display:grid; grid-template-columns:repeat(4, 1fr); gap:6px;
+  }
+  .xh-tf-item{
+    background:var(--bg); border:1px solid var(--line); border-radius:3px;
+    padding:8px 6px; text-align:center;
+  }
+  .xh-tf-label{font-family:var(--mono); font-size:9px; color:var(--muted); margin-bottom:4px;}
+  .xh-tf-val{font-family:var(--mono); font-size:12px;}
+  .ls-bar{
+    height:10px; border-radius:2px; overflow:hidden; display:flex;
+    background:var(--line); margin-top:6px;
+  }
+  .ls-long{background:var(--pos); height:100%;}
+  .ls-short{background:var(--neg); height:100%;}
+  .ls-readout{font-family:var(--mono); font-size:12px; margin-top:4px;}
+  .xh-signal{
+    margin-top:12px; padding:10px 12px; border-radius:3px; border:1px solid var(--line);
+    font-size:12px; line-height:1.45;
+  }
+  .xh-signal.sig-pos{border-color:rgba(63,182,140,0.45); background:rgba(63,182,140,0.1); color:var(--pos);}
+  .xh-signal.sig-warn{border-color:rgba(201,168,76,0.45); background:rgba(201,168,76,0.1); color:var(--warn);}
+  .xh-signal.sig-neg{border-color:rgba(214,91,74,0.45); background:rgba(214,91,74,0.1); color:var(--neg);}
+  .xh-signal.sig-neutral{border-color:var(--line); background:rgba(124,132,143,0.08); color:var(--muted);}
+  .xh-signal-note{font-family:var(--mono); font-size:9px; color:var(--muted); margin-top:6px; line-height:1.4;}
+  .xh-hint{font-family:var(--mono); font-size:9px; color:var(--muted); margin-top:2px;}
+
+  #trendList{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));
+    gap:0 20px;
+  }
+  .trend-rank{
+    font-family:var(--mono); font-size:11px; color:var(--amber-dim);
+    width:22px; flex-shrink:0;
+  }
+  .trend-row{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 0; border-bottom:1px solid var(--line); font-size:12px;
+  }
+  .trend-main{flex:1; min-width:0;}
+  .trend-name{font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .trend-right{text-align:right; flex-shrink:0;}
+
+  .footer{padding:16px 18px; color:var(--muted); font-size:10px; font-family:var(--mono); text-align:center; line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="dot"></span>DÒNG VỐN // CAPITAL FLOW</div>
+  <div class="clock" id="clock">--:--:--</div>
+</div>
+
+<div class="pulse-wrap">
+  <div class="pulse-label"><span>ÁP LỰC BÁN</span><span id="pulseReadoutTop">TỔNG HỢP WATCHLIST (24H)</span><span>ÁP LỰC MUA</span></div>
+  <div class="pulse-bar">
+    <div class="pulse-fill-neg" id="pulseNeg" style="width:0%"></div>
+    <div class="pulse-mid"></div>
+    <div class="pulse-fill-pos" id="pulsePos" style="width:0%"></div>
+  </div>
+  <div class="pulse-readout" id="pulseReadout">Thêm token vào watchlist để tính chỉ số</div>
+</div>
+
+<div class="grid">
+
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <div class="panel-title-row">
+          <div class="panel-title">DEXSCREENER</div>
+          <span class="badge badge-live" id="dexBadge">🟢 LIVE · cập nhật mỗi 30s</span>
+        </div>
+        <div class="panel-sub">GIÁ · THANH KHOẢN · bấm token để xem XU HƯỚNG</div>
+      </div>
+    </div>
+    <div class="panel-stamp" id="dexStamp">Cập nhật lúc: —</div>
+    <div class="input-row">
+      <input type="text" id="tokenInput" placeholder="symbol hoặc contract (vd: NEAR, PEPE...)">
+      <button onclick="addToken()">+ Thêm</button>
+    </div>
+    <div id="tokenList"></div>
+    <div class="note">Nguồn: api.dexscreener.com · Bấm token để mở XU HƯỚNG (lazy) · Watchlist dùng chung Binance · Tự refresh 30s</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <div class="panel-title-row">
+          <div class="panel-title">BINANCE FUTURES</div>
+          <span class="badge badge-live" id="binBadge">🟢 LIVE · cập nhật mỗi 30s</span>
+        </div>
+        <div class="panel-sub">FUNDING · OI · bấm token để xem XU HƯỚNG</div>
+      </div>
+    </div>
+    <div class="panel-stamp" id="binStamp">Cập nhật lúc: —</div>
+    <div id="binList"></div>
+    <div class="note">Nguồn: fapi.binance.com · Bấm token mở nến 4h, RSI, L/S, OI trend · Cache 60s/token</div>
+  </div>
+
+  <div class="panel panel-trend">
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <div class="panel-title-row">
+          <div class="panel-title">TRENDING</div>
+          <span class="badge badge-live" id="trendBadge">🟢 LIVE · cập nhật mỗi 5 phút</span>
+        </div>
+        <div class="panel-sub">COINGECKO · XU HƯỚNG TÌM KIẾM</div>
+      </div>
+    </div>
+    <div class="panel-stamp" id="trendStamp">Cập nhật lúc: —</div>
+    <div id="trendList"></div>
+    <div class="note">Nguồn: api.coingecko.com/api/v3/search/trending · Top coin đang được tìm nhiều · Tự gọi mỗi 5 phút</div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Dexscreener & Binance: mỗi 30s · Trending CoinGecko: mỗi 5 phút · XU HƯỚNG token: lazy + cache 60s · Không phải lời khuyên đầu tư<br>
+  Các nguồn dữ liệu có độ trễ và tần suất cập nhật khác nhau — xem nhãn từng mục để biết chi tiết.
+</div>
+
+<script>
+// ---------- Clock & helpers ----------
+function tick(){
+  const d = new Date();
+  document.getElementById('clock').textContent = d.toLocaleTimeString('vi-VN', {hour12:false}) + ' ICT';
+}
+setInterval(tick, 1000); tick();
+
+function formatTime(d){
+  return d.toLocaleTimeString('vi-VN', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+function formatTimeShort(d){
+  return d.toLocaleTimeString('vi-VN', {hour12:false, hour:'2-digit', minute:'2-digit'});
+}
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escapeAttr(s){
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+function fmtUsd(n){
+  if(!isFinite(n)) return '—';
+  if(n >= 1e9) return (n/1e9).toFixed(2) + 'B';
+  if(n >= 1e6) return (n/1e6).toFixed(2) + 'M';
+  if(n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n.toFixed(0);
+}
+function fmtFunding(rate){
+  const pct = Number(rate) * 100;
+  if(!isFinite(pct)) return '—';
+  return (pct >= 0 ? '+' : '') + pct.toFixed(4) + '%';
+}
+function fmtPct(n){
+  if(n == null || !isFinite(n)) return '—';
+  return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+}
+function pctClass(n){
+  if(n == null || !isFinite(n)) return 'chg-muted';
+  return n >= 0 ? 'chg-pos' : 'chg-neg';
+}
+
+async function storeGet(key){
+  try{
+    if(window.storage && typeof window.storage.get === 'function'){
+      const r = await window.storage.get(key, false);
+      return r ? JSON.parse(r.value) : null;
+    }
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+async function storeSet(key, value){
+  try{
+    const str = JSON.stringify(value);
+    if(window.storage && typeof window.storage.set === 'function'){
+      await window.storage.set(key, str, false);
+    } else {
+      localStorage.setItem(key, str);
+    }
+  }catch(e){ console.error(e); }
+}
+
+function setPanelOk(badgeId, stampId, liveText, when){
+  const badge = document.getElementById(badgeId);
+  const stamp = document.getElementById(stampId);
+  badge.className = 'badge badge-live';
+  badge.textContent = liveText;
+  stamp.className = 'panel-stamp';
+  stamp.textContent = 'Cập nhật lúc: ' + formatTime(when);
+}
+function setPanelError(badgeId, stampId, lastOkAt){
+  const badge = document.getElementById(badgeId);
+  const stamp = document.getElementById(stampId);
+  const t = lastOkAt ? formatTimeShort(lastOkAt) : '—';
+  badge.className = 'badge badge-error';
+  badge.textContent = '🔴 LỖI · dữ liệu cũ lúc ' + t;
+  stamp.className = 'panel-stamp error';
+  stamp.textContent = '⚠️ Lỗi tải, dữ liệu cũ lúc ' + t;
+}
+
+async function fetchJson(url, timeoutMs){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs || 12000);
+  try{
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if(!res.ok){
+      const err = new Error('HTTP ' + res.status);
+      err.status = res.status;
+      throw err;
+    }
+    return await res.json();
+  }catch(e){
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
+// ---------- Watchlist ----------
+let watchlist = [];
+
+async function loadWatchlist(){
+  watchlist = (await storeGet('dv_watchlist')) || ['NEAR', 'SOL', 'BTC'];
+  await Promise.all([
+    renderTokens({ showLoading: true }),
+    renderBinance({ showLoading: true })
+  ]);
+}
+
+async function addToken(){
+  const input = document.getElementById('tokenInput');
+  const val = input.value.trim();
+  if(!val) return;
+  const key = val.startsWith('0x') ? val : val.toUpperCase();
+  if(!watchlist.includes(key)) watchlist.push(key);
+  input.value = '';
+  await storeSet('dv_watchlist', watchlist);
+  await Promise.all([
+    renderTokens({ showLoading: true }),
+    renderBinance({ showLoading: true })
+  ]);
+}
+
+async function removeToken(sym, ev){
+  if(ev) ev.stopPropagation();
+  watchlist = watchlist.filter(t => t !== sym);
+  delete dexCache[sym];
+  delete binCache[sym];
+  delete xhCache[sym];
+  if(expanded && expanded.sym === sym) expanded = null;
+  await storeSet('dv_watchlist', watchlist);
+  await Promise.all([
+    renderTokens({ showLoading: true }),
+    renderBinance({ showLoading: true })
+  ]);
+}
+
+function toBinanceSymbol(entry){
+  if(!entry || entry.startsWith('0x')) return null;
+  let s = String(entry).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if(!s) return null;
+  if(s.endsWith('USDT')) return s;
+  if(s === 'BTC' || s === 'XBT') return 'BTCUSDT';
+  if(s === 'ETH') return 'ETHUSDT';
+  return s + 'USDT';
+}
+
+// ---------- DEXSCREENER ----------
+const DEX_REFRESH_MS = 30000;
+const DEX_LIVE = '🟢 LIVE · cập nhật mỗi 30s';
+let dexLastOkAt = null;
+let dexCache = {};
+let dexRefreshing = false;
+
+async function fetchDexscreener(query){
+  try{
+    const data = await fetchJson(
+      `https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(query)}`,
+      12000
+    );
+    if(!data.pairs || data.pairs.length === 0) return { ok: true, pair: null };
+    const sorted = data.pairs.slice().sort((a,b) => (b.liquidity?.usd||0) - (a.liquidity?.usd||0));
+    return { ok: true, pair: sorted[0] };
+  }catch(e){
+    return { ok: false, error: true, pair: null };
+  }
+}
+
+function buildTokenHtml(sym, pair, panel){
+  const isOpen = expanded && expanded.sym === sym && expanded.panel === panel;
+  const chev = `<span class="chev ${isOpen ? 'open' : ''}">▶</span>`;
+  let main;
+  if(!pair){
+    main = `
+      <div class="token-row clickable ${isOpen ? 'expanded' : ''}" onclick="toggleXh('${escapeAttr(sym)}','${panel}',event)">
+        <div>
+          <div class="token-name">${escapeHtml(sym)}${chev}</div>
+          <div class="token-meta">không tìm thấy · <span class="xh-hint">bấm để xem XU HƯỚNG</span></div>
+        </div>
+        <button class="remove-btn" onclick="removeToken('${escapeAttr(sym)}',event)" title="Xóa">✕</button>
+      </div>`;
+  } else {
+    const chg = pair.priceChange?.h24 ?? 0;
+    const chgClass = chg >= 0 ? 'chg-pos' : 'chg-neg';
+    const chgSign = chg >= 0 ? '+' : '';
+    const liq = pair.liquidity?.usd ? (pair.liquidity.usd/1000).toFixed(0)+'K' : '—';
+    const price = Number(pair.priceUsd);
+    const priceStr = isFinite(price) ? price.toFixed(price < 1 ? 5 : 3) : '—';
+    main = `
+      <div class="token-row clickable ${isOpen ? 'expanded' : ''}" onclick="toggleXh('${escapeAttr(sym)}','${panel}',event)">
+        <div>
+          <div class="token-name">${escapeHtml(pair.baseToken?.symbol || sym)}${chev}</div>
+          <div class="token-meta">${escapeHtml(pair.dexId || '')} · Liq $${liq} · <span class="xh-hint">XU HƯỚNG</span></div>
+        </div>
+        <div class="token-right">
+          <div class="price">$${priceStr}</div>
+          <div class="${chgClass}">${chgSign}${Number(chg).toFixed(2)}%</div>
+        </div>
+        <button class="remove-btn" onclick="removeToken('${escapeAttr(sym)}',event)">✕</button>
+      </div>`;
+  }
+  const expand = isOpen ? `<div class="xh-slot" data-xh-sym="${escapeHtml(sym)}" data-xh-panel="${panel}"></div>` : '';
+  return `<div class="token-block" data-sym="${escapeHtml(sym)}">${main}${expand}</div>`;
+}
+
+function paintDexFromCache(){
+  const list = document.getElementById('tokenList');
+  let html = '';
+  const changes = [];
+  watchlist.forEach(sym => {
+    const pair = Object.prototype.hasOwnProperty.call(dexCache, sym) ? dexCache[sym] : null;
+    html += buildTokenHtml(sym, pair, 'dex');
+    if(pair) changes.push(pair.priceChange?.h24 ?? 0);
+  });
+  list.innerHTML = html;
+  updatePulse(changes);
+  fillXhSlots();
+}
+
+async function renderTokens(opts){
+  const showLoading = opts && opts.showLoading;
+  const list = document.getElementById('tokenList');
+  if(watchlist.length === 0){
+    list.innerHTML = '<div class="empty">Watchlist trống. Thêm token phía trên.</div>';
+    updatePulse([]);
+    setPanelOk('dexBadge', 'dexStamp', DEX_LIVE, new Date());
+    dexLastOkAt = new Date();
+    return;
+  }
+  if(dexRefreshing) return;
+  dexRefreshing = true;
+  const hasCache = watchlist.some(s => Object.prototype.hasOwnProperty.call(dexCache, s));
+  if(showLoading && !hasCache) list.innerHTML = '<div class="loading">Đang tải dữ liệu...</div>';
+
+  try{
+    const results = await Promise.all(watchlist.map(sym => fetchDexscreener(sym)));
+    const anyError = results.some(r => r.error);
+    const anyOk = results.some(r => r.ok);
+    if(anyError && !anyOk){
+      setPanelError('dexBadge', 'dexStamp', dexLastOkAt);
+      if(hasCache) paintDexFromCache();
+      else {
+        list.innerHTML = '<div class="empty">Không tải được Dexscreener. Thử lại sau.</div>';
+        updatePulse([]);
+      }
+      return;
+    }
+    results.forEach((r, i) => { if(r.ok) dexCache[watchlist[i]] = r.pair; });
+    paintDexFromCache();
+    if(anyError) setPanelError('dexBadge', 'dexStamp', dexLastOkAt);
+    else {
+      dexLastOkAt = new Date();
+      setPanelOk('dexBadge', 'dexStamp', DEX_LIVE, dexLastOkAt);
+    }
+  } finally {
+    dexRefreshing = false;
+  }
+}
+
+function updatePulse(changes){
+  const readout = document.getElementById('pulseReadout');
+  if(changes.length === 0){
+    document.getElementById('pulseNeg').style.width = '0%';
+    document.getElementById('pulsePos').style.width = '0%';
+    readout.textContent = 'Thêm token vào watchlist để tính chỉ số';
+    return;
+  }
+  const avg = changes.reduce((a,b) => a+b, 0) / changes.length;
+  document.getElementById('pulsePos').style.width = Math.max(0, Math.min(50, avg * 3)) + '%';
+  document.getElementById('pulseNeg').style.width = Math.max(0, Math.min(50, -avg * 3)) + '%';
+  const dir = avg >= 0 ? 'nghiêng MUA' : 'nghiêng BÁN';
+  readout.textContent = `Trung bình 24h: ${avg >= 0 ? '+' : ''}${avg.toFixed(2)}% — ${dir}`;
+}
+
+// ---------- BINANCE FUNDING + OI ----------
+const BIN_LIVE = '🟢 LIVE · cập nhật mỗi 30s';
+let binLastOkAt = null;
+let binCache = {};
+let binRefreshing = false;
+
+async function fetchBinanceFutures(watchSym){
+  const pair = toBinanceSymbol(watchSym);
+  if(!pair){
+    return { ok: true, data: { missing: true, reason: 'không map được futures (contract address?)' } };
+  }
+  try{
+    const [prem, oi] = await Promise.all([
+      fetchJson(`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${encodeURIComponent(pair)}`, 12000),
+      fetchJson(`https://fapi.binance.com/fapi/v1/openInterest?symbol=${encodeURIComponent(pair)}`, 12000)
+    ]);
+    const mark = Number(prem.markPrice);
+    const openInterest = Number(oi.openInterest);
+    const oiUsd = isFinite(mark) && isFinite(openInterest) ? openInterest * mark : null;
+    return {
+      ok: true,
+      data: {
+        missing: false,
+        pair,
+        funding: Number(prem.lastFundingRate),
+        mark,
+        nextFunding: prem.nextFundingTime,
+        oi: openInterest,
+        oiUsd
+      }
+    };
+  }catch(e){
+    if(e.status === 400){
+      return { ok: true, data: { missing: true, reason: 'không có perpetual USD-M', pair } };
+    }
+    return { ok: false, error: true, data: null };
+  }
+}
+
+function buildBinRow(sym, data){
+  const isOpen = expanded && expanded.sym === sym && expanded.panel === 'bin';
+  const chev = `<span class="chev ${isOpen ? 'open' : ''}">▶</span>`;
+  const cgLink = data && data.pair
+    ? `https://www.coinglass.com/tv/Binance_${data.pair}`
+    : `https://www.coinglass.com/tv/Binance_${encodeURIComponent(String(sym).replace(/^0x.*/i,'TOKEN') + (String(sym).endsWith('USDT')?'':'USDT'))}`;
+
+  let main;
+  if(!data || data.missing){
+    main = `
+      <div class="token-row clickable ${isOpen ? 'expanded' : ''}" onclick="toggleXh('${escapeAttr(sym)}','bin',event)">
+        <div>
+          <div class="token-name">${escapeHtml(sym)}${chev}</div>
+          <div class="token-meta">${escapeHtml(data?.reason || 'không có dữ liệu')} · <a class="ref-link" href="${cgLink}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Coinglass</a></div>
+        </div>
+        <div class="token-right"><div class="token-meta">—</div></div>
+      </div>`;
+  } else {
+    const fr = data.funding;
+    const frClass = fr >= 0 ? 'chg-pos' : 'chg-neg';
+    const next = data.nextFunding
+      ? new Date(data.nextFunding).toLocaleTimeString('vi-VN', {hour12:false, hour:'2-digit', minute:'2-digit'})
+      : '—';
+    main = `
+      <div class="token-row clickable ${isOpen ? 'expanded' : ''}" onclick="toggleXh('${escapeAttr(sym)}','bin',event)">
+        <div>
+          <div class="token-name">${escapeHtml(data.pair)}${chev}</div>
+          <div class="token-meta">Mark $${isFinite(data.mark) ? Number(data.mark).toLocaleString('en-US', {maximumFractionDigits: data.mark < 1 ? 5 : 2}) : '—'} · Next FR ${next} · <a class="ref-link" href="${cgLink}" target="_blank" rel="noopener" onclick="event.stopPropagation()">CG</a></div>
+        </div>
+        <div class="token-right">
+          <div class="metrics-grid">
+            <div>
+              <div class="metric-label">FUNDING</div>
+              <div class="metric ${frClass}">${fmtFunding(fr)}</div>
+            </div>
+            <div>
+              <div class="metric-label">OI (USD)</div>
+              <div class="metric">$${fmtUsd(data.oiUsd)}</div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+  const expand = isOpen ? `<div class="xh-slot" data-xh-sym="${escapeHtml(sym)}" data-xh-panel="bin"></div>` : '';
+  return `<div class="token-block">${main}${expand}</div>`;
+}
+
+function paintBinFromCache(){
+  const el = document.getElementById('binList');
+  if(watchlist.length === 0){
+    el.innerHTML = '<div class="empty">Thêm token vào watchlist (panel Dexscreener).</div>';
+    return;
+  }
+  el.innerHTML = watchlist.map(sym => {
+    const data = Object.prototype.hasOwnProperty.call(binCache, sym) ? binCache[sym] : null;
+    return buildBinRow(sym, data);
+  }).join('');
+  fillXhSlots();
+}
+
+async function renderBinance(opts){
+  const showLoading = opts && opts.showLoading;
+  const el = document.getElementById('binList');
+  if(watchlist.length === 0){
+    el.innerHTML = '<div class="empty">Thêm token vào watchlist (panel Dexscreener).</div>';
+    binLastOkAt = new Date();
+    setPanelOk('binBadge', 'binStamp', BIN_LIVE, binLastOkAt);
+    return;
+  }
+  if(binRefreshing) return;
+  binRefreshing = true;
+  const hasCache = watchlist.some(s => Object.prototype.hasOwnProperty.call(binCache, s));
+  if(showLoading && !hasCache) el.innerHTML = '<div class="loading">Đang tải Funding / OI...</div>';
+
+  try{
+    const results = await Promise.all(watchlist.map(sym => fetchBinanceFutures(sym)));
+    const anyError = results.some(r => r.error);
+    const anyOk = results.some(r => r.ok);
+    if(anyError && !anyOk){
+      setPanelError('binBadge', 'binStamp', binLastOkAt);
+      if(hasCache) paintBinFromCache();
+      else el.innerHTML = '<div class="empty">Không tải được Binance Futures. Thử lại sau.</div>';
+      return;
+    }
+    results.forEach((r, i) => { if(r.ok) binCache[watchlist[i]] = r.data; });
+    paintBinFromCache();
+    if(anyError) setPanelError('binBadge', 'binStamp', binLastOkAt);
+    else {
+      binLastOkAt = new Date();
+      setPanelOk('binBadge', 'binStamp', BIN_LIVE, binLastOkAt);
+    }
+  } finally {
+    binRefreshing = false;
+  }
+}
+
+// ---------- TRENDING COINGECKO ----------
+const TREND_REFRESH_MS = 5 * 60 * 1000;
+const TREND_LIVE = '🟢 LIVE · cập nhật mỗi 5 phút';
+let trendLastOkAt = null;
+let trendCache = null;
+let trendRefreshing = false;
+
+async function fetchTrending(){
+  try{
+    const data = await fetchJson('https://api.coingecko.com/api/v3/search/trending', 15000);
+    const coins = (data.coins || []).map(c => c.item).filter(Boolean);
+    return { ok: true, coins };
+  }catch(e){
+    return { ok: false, error: true, coins: null };
+  }
+}
+
+function paintTrendFromCache(){
+  const el = document.getElementById('trendList');
+  if(!trendCache || trendCache.length === 0){
+    el.innerHTML = '<div class="empty">Không có dữ liệu trending.</div>';
+    return;
+  }
+  el.innerHTML = trendCache.slice(0, 10).map((item, i) => {
+    const rank = item.market_cap_rank != null ? '#' + item.market_cap_rank : '—';
+    const chg = item.data?.price_change_percentage_24h?.usd;
+    let chgHtml = '<div class="token-meta">—</div>';
+    if(chg != null && isFinite(Number(chg))){
+      const n = Number(chg);
+      chgHtml = `<div class="${n >= 0 ? 'chg-pos' : 'chg-neg'}">${n >= 0 ? '+' : ''}${n.toFixed(2)}%</div>`;
+    }
+    const price = item.data?.price;
+    const priceStr = (typeof price === 'number' || (typeof price === 'string' && price))
+      ? (typeof price === 'number' ? '$' + (price < 1 ? price.toPrecision(4) : price.toLocaleString('en-US', {maximumFractionDigits: 4})) : String(price))
+      : '';
+    return `
+      <div class="trend-row">
+        <div class="trend-rank">${i + 1}</div>
+        <div class="trend-main">
+          <div class="trend-name">${escapeHtml(item.name || item.symbol || '—')}</div>
+          <div class="token-meta">${escapeHtml((item.symbol || '').toUpperCase())} · MC rank ${rank}</div>
+        </div>
+        <div class="trend-right">
+          ${priceStr ? `<div class="price">${escapeHtml(priceStr)}</div>` : ''}
+          ${chgHtml}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function renderTrending(opts){
+  const showLoading = opts && opts.showLoading;
+  const el = document.getElementById('trendList');
+  if(trendRefreshing) return;
+  trendRefreshing = true;
+  if(showLoading && !trendCache) el.innerHTML = '<div class="loading">Đang tải trending...</div>';
+  try{
+    const result = await fetchTrending();
+    if(!result.ok){
+      setPanelError('trendBadge', 'trendStamp', trendLastOkAt);
+      if(trendCache) paintTrendFromCache();
+      else el.innerHTML = '<div class="empty">Không tải được CoinGecko Trending. Thử lại sau.</div>';
+      return;
+    }
+    trendCache = result.coins;
+    paintTrendFromCache();
+    trendLastOkAt = new Date();
+    setPanelOk('trendBadge', 'trendStamp', TREND_LIVE, trendLastOkAt);
+  } finally {
+    trendRefreshing = false;
+  }
+}
+
+// ============================================================
+// VIỆC 4 — XU HƯỚNG // TREND (accordion, lazy, cache 60s)
+// ============================================================
+const XH_CACHE_MS = 60000;
+const XH_LIVE = '🟢 LIVE · cache 60s';
+/** @type {{sym:string, panel:'dex'|'bin'}|null} */
+let expanded = null;
+/** @type {Record<string, {ts:number, lastOkAt:Date|null, error:boolean, payload:object|null, missing?:string}>} */
+const xhCache = {};
+const xhLoading = {};
+
+function toggleXh(sym, panel, ev){
+  if(ev && (ev.target.closest('.remove-btn') || ev.target.closest('a'))) return;
+  if(expanded && expanded.sym === sym && expanded.panel === panel){
+    expanded = null;
+  } else {
+    expanded = { sym, panel };
+  }
+  paintDexFromCache();
+  paintBinFromCache();
+  if(expanded) loadXhDetail(sym);
+}
+
+function fillXhSlots(){
+  if(!expanded) return;
+  document.querySelectorAll('.xh-slot').forEach(slot => {
+    const sym = slot.getAttribute('data-xh-sym');
+    if(sym !== expanded.sym) return;
+    renderXhInto(slot, sym);
+  });
+}
+
+function renderXhInto(slot, sym){
+  const cached = xhCache[sym];
+  if(xhLoading[sym] && !cached){
+    slot.innerHTML = `<div class="xh-panel"><div class="loading">Đang tải XU HƯỚNG // TREND...</div></div>`;
+    return;
+  }
+  if(!cached){
+    slot.innerHTML = `<div class="xh-panel"><div class="loading">Đang tải XU HƯỚNG // TREND...</div></div>`;
+    return;
+  }
+  if(cached.missing){
+    slot.innerHTML = `
+      <div class="xh-panel">
+        <div class="xh-head">
+          <div class="xh-title">XU HƯỚNG // TREND · ${escapeHtml(sym)}</div>
+        </div>
+        <div class="empty" style="padding:12px 0">${escapeHtml(cached.missing)}</div>
+      </div>`;
+    return;
+  }
+  if(cached.error && !cached.payload){
+    const t = cached.lastOkAt ? formatTimeShort(cached.lastOkAt) : '—';
+    slot.innerHTML = `
+      <div class="xh-panel">
+        <div class="xh-head">
+          <div class="xh-title">XU HƯỚNG // TREND · ${escapeHtml(sym)}</div>
+          <div class="xh-meta">
+            <span class="badge badge-error">🔴 LỖI · dữ liệu cũ lúc ${t}</span>
+            <span class="xh-stamp error">⚠️ Lỗi tải, dữ liệu cũ lúc ${t}</span>
+          </div>
+        </div>
+        <div class="empty" style="padding:12px 0">Không tải được dữ liệu xu hướng. Thử lại sau.</div>
+      </div>`;
+    return;
+  }
+
+  const p = cached.payload;
+  const when = cached.lastOkAt ? formatTime(cached.lastOkAt) : '—';
+  const badgeHtml = cached.error
+    ? `<span class="badge badge-error">🔴 LỖI · dữ liệu cũ lúc ${formatTimeShort(cached.lastOkAt)}</span>
+       <span class="xh-stamp error">⚠️ Lỗi tải, dữ liệu cũ lúc ${formatTimeShort(cached.lastOkAt)}</span>`
+    : `<span class="badge badge-live">${XH_LIVE}</span>
+       <span class="xh-stamp">Cập nhật lúc: ${when}</span>`;
+
+  const rsi = p.rsi;
+  let rsiLabel = '—', rsiClass = 'chg-muted';
+  if(rsi != null && isFinite(rsi)){
+    if(rsi > 70){ rsiLabel = `RSI ${rsi.toFixed(1)} · Quá mua`; rsiClass = 'chg-neg'; }
+    else if(rsi < 30){ rsiLabel = `RSI ${rsi.toFixed(1)} · Quá bán`; rsiClass = 'chg-pos'; }
+    else { rsiLabel = `RSI ${rsi.toFixed(1)} · Trung tính`; rsiClass = 'chg-muted'; }
+  } else {
+    rsiLabel = 'RSI — · thiếu dữ liệu';
+  }
+
+  const tf = p.tf || {};
+  const longPct = p.longPct;
+  const shortPct = p.shortPct;
+  let lsHtml = '<div class="token-meta">Không có dữ liệu Long/Short</div>';
+  if(longPct != null && shortPct != null){
+    lsHtml = `
+      <div class="ls-readout"><span class="chg-pos">Long ${longPct.toFixed(1)}%</span> / <span class="chg-neg">Short ${shortPct.toFixed(1)}%</span></div>
+      <div class="ls-bar"><div class="ls-long" style="width:${longPct}%"></div><div class="ls-short" style="width:${shortPct}%"></div></div>`;
+  }
+
+  let oiHtml = '<span class="chg-muted">OI — thiếu dữ liệu</span>';
+  if(p.oiChangePct != null && isFinite(p.oiChangePct)){
+    if(p.oiChangePct >= 0){
+      oiHtml = `<span class="chg-pos">OI đang tăng ↑ ${fmtPct(p.oiChangePct)}</span>`;
+    } else {
+      oiHtml = `<span class="chg-neg">OI đang giảm ↓ ${fmtPct(p.oiChangePct)}</span>`;
+    }
+  }
+
+  const sig = p.signal || { cls: 'sig-neutral', text: 'Chưa đủ tín hiệu rõ ràng' };
+
+  const notes = (p.notes && p.notes.length) ? `<div class="token-meta" style="margin-top:8px">${p.notes.map(escapeHtml).join(' · ')}</div>` : '';
+
+  slot.innerHTML = `
+    <div class="xh-panel">
+      <div class="xh-head">
+        <div class="xh-title">XU HƯỚNG // TREND · ${escapeHtml(p.pair || sym)}</div>
+        <div class="xh-meta">${badgeHtml}</div>
+      </div>
+      <div class="xh-grid">
+        <div>
+          <div class="xh-section-title">NẾN 4H · 30 CÂY</div>
+          <div class="xh-chart-wrap"><canvas class="xh-canvas" width="480" height="140"></canvas></div>
+          <div class="xh-rsi ${rsiClass}">${rsiLabel}</div>
+        </div>
+        <div>
+          <div class="xh-section-title">% THAY ĐỔI GIÁ</div>
+          <div class="xh-tf">
+            <div class="xh-tf-item"><div class="xh-tf-label">1H</div><div class="xh-tf-val ${pctClass(tf.h1)}">${fmtPct(tf.h1)}</div></div>
+            <div class="xh-tf-item"><div class="xh-tf-label">4H</div><div class="xh-tf-val ${pctClass(tf.h4)}">${fmtPct(tf.h4)}</div></div>
+            <div class="xh-tf-item"><div class="xh-tf-label">24H</div><div class="xh-tf-val ${pctClass(tf.h24)}">${fmtPct(tf.h24)}</div></div>
+            <div class="xh-tf-item"><div class="xh-tf-label">7D</div><div class="xh-tf-val ${pctClass(tf.d7)}">${fmtPct(tf.d7)}</div></div>
+          </div>
+          <div style="margin-top:12px">
+            <div class="xh-section-title">LONG / SHORT (1H)</div>
+            ${lsHtml}
+          </div>
+          <div style="margin-top:12px">
+            <div class="xh-section-title">OPEN INTEREST vs 4H TRƯỚC</div>
+            <div class="metric" style="margin-top:4px">${oiHtml}</div>
+          </div>
+        </div>
+      </div>
+      <div class="xh-signal ${sig.cls}">
+        <strong>TÍN HIỆU TỔNG HỢP</strong><br>${escapeHtml(sig.text)}
+        <div class="xh-signal-note">Không phải lời khuyên đầu tư, chỉ tổng hợp dữ liệu theo quy tắc cơ bản</div>
+      </div>
+      ${notes}
+    </div>`;
+
+  // Vẽ nến sau khi DOM slot đã gắn — query trong slot (tránh lỗi id đặc biệt)
+  requestAnimationFrame(() => {
+    const canvas = slot.querySelector('canvas.xh-canvas');
+    if(canvas && p.klines4h && p.klines4h.length) drawCandles(canvas, p.klines4h);
+  });
+}
+
+async function loadXhDetail(sym){
+  const pair = toBinanceSymbol(sym);
+  if(!pair){
+    xhCache[sym] = { ts: Date.now(), lastOkAt: null, error: false, payload: null, missing: 'Không map được perpetual Binance (contract address?)' };
+    fillXhSlots();
+    return;
+  }
+
+  const now = Date.now();
+  const cached = xhCache[sym];
+  // Cache 60s: dùng lại payload (kể cả partial) nếu còn hạn
+  if(cached && (cached.payload || cached.missing) && (now - cached.ts) < XH_CACHE_MS){
+    fillXhSlots();
+    return;
+  }
+  if(xhLoading[sym]){
+    fillXhSlots();
+    return;
+  }
+
+  xhLoading[sym] = true;
+  fillXhSlots();
+
+  try{
+    const results = await Promise.allSettled([
+      fetchJson(`https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(pair)}&interval=4h&limit=30`, 15000),
+      fetchJson(`https://fapi.binance.com/fapi/v1/klines?symbol=${encodeURIComponent(pair)}&interval=1h&limit=168`, 15000),
+      fetchJson(`https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=${encodeURIComponent(pair)}&period=1h&limit=1`, 12000),
+      fetchJson(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${encodeURIComponent(pair)}&period=4h&limit=2`, 12000)
+    ]);
+
+    const k4 = results[0].status === 'fulfilled' ? results[0].value : null;
+    const k1 = results[1].status === 'fulfilled' ? results[1].value : null;
+    const ls = results[2].status === 'fulfilled' ? results[2].value : null;
+    const oiHist = results[3].status === 'fulfilled' ? results[3].value : null;
+
+    // symbol invalid → all fail with 400
+    const allRejected = results.every(r => r.status === 'rejected');
+    if(allRejected){
+      const status = results[0].reason && results[0].reason.status;
+      if(status === 400){
+        xhCache[sym] = { ts: Date.now(), lastOkAt: null, error: false, payload: null, missing: `Không có perpetual USD-M cho ${pair}` };
+      } else {
+        const prevOk = xhCache[sym] && xhCache[sym].payload ? xhCache[sym].lastOkAt : null;
+        xhCache[sym] = {
+          ts: Date.now(),
+          lastOkAt: prevOk,
+          error: true,
+          payload: xhCache[sym] && xhCache[sym].payload ? xhCache[sym].payload : null
+        };
+      }
+      fillXhSlots();
+      return;
+    }
+
+    const notes = [];
+    if(!k4) notes.push('Thiếu nến 4h');
+    if(!k1) notes.push('Thiếu nến 1h');
+    else if(k1.length < 168) notes.push(`Nến 1h chỉ có ${k1.length}/168 (7D có thể thiếu)`);
+    if(!ls) notes.push('Thiếu Long/Short');
+    if(!oiHist || oiHist.length < 2) notes.push('Thiếu OI hist');
+
+    const candles = k4 ? parseKlines(k4) : [];
+    const closes4 = candles.map(c => c.close);
+    const rsi = closes4.length >= 15 ? calcRSI(closes4, 14) : null;
+
+    const candles1 = k1 ? parseKlines(k1) : [];
+    const tf = calcTimeframePct(candles1);
+
+    let longPct = null, shortPct = null;
+    const lsRow = Array.isArray(ls) ? ls[0] : ls;
+    if(lsRow){
+      longPct = Number(lsRow.longAccount) * 100;
+      shortPct = Number(lsRow.shortAccount) * 100;
+      if(!isFinite(longPct) || !isFinite(shortPct)){ longPct = null; shortPct = null; }
+    }
+
+    let oiChangePct = null;
+    if(Array.isArray(oiHist) && oiHist.length >= 2){
+      const sorted = oiHist.slice().sort((a,b) => Number(a.timestamp) - Number(b.timestamp));
+      const prev = Number(sorted[sorted.length-2].sumOpenInterestValue);
+      const curr = Number(sorted[sorted.length-1].sumOpenInterestValue);
+      if(isFinite(prev) && isFinite(curr) && prev !== 0){
+        oiChangePct = ((curr - prev) / prev) * 100;
+      }
+    }
+
+    const funding = (binCache[sym] && !binCache[sym].missing) ? binCache[sym].funding : null;
+    const signal = buildSignal({
+      priceUp: tf.h4 != null ? tf.h4 > 0 : (tf.h24 != null ? tf.h24 > 0 : null),
+      oiUp: oiChangePct != null ? oiChangePct > 0 : null,
+      funding,
+      rsi
+    });
+
+    const anyFail = results.some(r => r.status === 'rejected');
+    xhCache[sym] = {
+      ts: Date.now(),
+      lastOkAt: new Date(),
+      error: anyFail,
+      payload: {
+        pair,
+        klines4h: candles,
+        rsi,
+        tf,
+        longPct,
+        shortPct,
+        oiChangePct,
+        funding,
+        signal,
+        notes
+      }
+    };
+    fillXhSlots();
+  }catch(e){
+    const prev = xhCache[sym];
+    xhCache[sym] = {
+      ts: Date.now(),
+      lastOkAt: prev && prev.lastOkAt ? prev.lastOkAt : null,
+      error: true,
+      payload: prev && prev.payload ? prev.payload : null
+    };
+    fillXhSlots();
+  } finally {
+    xhLoading[sym] = false;
+  }
+}
+
+function parseKlines(raw){
+  // [ openTime, o, h, l, c, volume, ... ]
+  return raw.map(k => ({
+    t: Number(k[0]),
+    open: Number(k[1]),
+    high: Number(k[2]),
+    low: Number(k[3]),
+    close: Number(k[4]),
+    volume: Number(k[5])
+  })).filter(c => isFinite(c.open) && isFinite(c.close));
+}
+
+/** Wilder RSI */
+function calcRSI(closes, period){
+  period = period || 14;
+  if(!closes || closes.length < period + 1) return null;
+  let avgGain = 0, avgLoss = 0;
+  for(let i = 1; i <= period; i++){
+    const d = closes[i] - closes[i-1];
+    if(d >= 0) avgGain += d; else avgLoss -= d;
+  }
+  avgGain /= period;
+  avgLoss /= period;
+  for(let i = period + 1; i < closes.length; i++){
+    const d = closes[i] - closes[i-1];
+    const g = d > 0 ? d : 0;
+    const l = d < 0 ? -d : 0;
+    avgGain = (avgGain * (period - 1) + g) / period;
+    avgLoss = (avgLoss * (period - 1) + l) / period;
+  }
+  if(avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return 100 - (100 / (1 + rs));
+}
+
+function pctChange(from, to){
+  if(!isFinite(from) || !isFinite(to) || from === 0) return null;
+  return ((to - from) / from) * 100;
+}
+
+/** From 1h candles: % vs N hours ago */
+function calcTimeframePct(candles1h){
+  const out = { h1: null, h4: null, h24: null, d7: null };
+  if(!candles1h || candles1h.length < 2) return out;
+  const last = candles1h[candles1h.length - 1].close;
+  const at = (barsAgo) => {
+    const idx = candles1h.length - 1 - barsAgo;
+    if(idx < 0) return null;
+    return pctChange(candles1h[idx].close, last);
+  };
+  out.h1 = at(1);
+  out.h4 = at(4);
+  out.h24 = at(24);
+  out.d7 = at(168);
+  // nếu thiếu 168, dùng nến đầu tiên nếu còn ít nhất ~100h?
+  if(out.d7 == null && candles1h.length >= 2){
+    // partial 7d: từ cây xa nhất có được
+    out.d7 = pctChange(candles1h[0].close, last);
+  }
+  return out;
+}
+
+function buildSignal({ priceUp, oiUp, funding, rsi }){
+  // Funding dương cao > 0.05% = 0.0005 decimal
+  const fundHigh = funding != null && isFinite(funding) && funding > 0.0005;
+  const fundMildPos = funding != null && isFinite(funding) && funding > 0 && funding <= 0.0005;
+
+  if(rsi != null && rsi > 70 && fundHigh){
+    return { cls: 'sig-neg', text: 'Thị trường quá hưng phấn, rủi ro điều chỉnh' };
+  }
+  if(priceUp === true && oiUp === true && fundMildPos){
+    return { cls: 'sig-pos', text: 'Xu hướng tăng có dòng tiền thật' };
+  }
+  // Also allow mild: price up + OI up + funding positive (including slightly higher but not overheat)
+  if(priceUp === true && oiUp === true && funding != null && funding > 0 && !fundHigh){
+    return { cls: 'sig-pos', text: 'Xu hướng tăng có dòng tiền thật' };
+  }
+  if(priceUp === true && oiUp === false){
+    return { cls: 'sig-warn', text: 'Có thể chỉ là short bị ép đóng lệnh, cẩn trọng' };
+  }
+  return { cls: 'sig-neutral', text: 'Chưa đủ tín hiệu rõ ràng' };
+}
+
+function drawCandles(canvas, candles){
+  if(!canvas || !candles || candles.length === 0) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0B0D10';
+  ctx.fillRect(0, 0, W, H);
+
+  let min = Infinity, max = -Infinity;
+  candles.forEach(c => {
+    if(c.low < min) min = c.low;
+    if(c.high > max) max = c.high;
+  });
+  if(!isFinite(min) || !isFinite(max) || min === max){
+    max = min + 1;
+  }
+  const pad = (max - min) * 0.05 || 0.01;
+  min -= pad; max += pad;
+  const n = candles.length;
+  const slot = W / n;
+  const bodyW = Math.max(2, slot * 0.55);
+  const midX = (i) => i * slot + slot / 2;
+  const yOf = (p) => H - ((p - min) / (max - min)) * (H - 8) - 4;
+
+  candles.forEach((c, i) => {
+    const x = midX(i);
+    const up = c.close >= c.open;
+    const color = up ? '#3FB68C' : '#D65B4A';
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 1;
+    // wick
+    ctx.beginPath();
+    ctx.moveTo(x, yOf(c.high));
+    ctx.lineTo(x, yOf(c.low));
+    ctx.stroke();
+    // body
+    const y1 = yOf(c.open);
+    const y2 = yOf(c.close);
+    const top = Math.min(y1, y2);
+    const h = Math.max(1, Math.abs(y2 - y1));
+    ctx.fillRect(x - bodyW / 2, top, bodyW, h);
+  });
+}
+
+// ---------- Enter / Init ----------
+document.getElementById('tokenInput').addEventListener('keypress', e => { if(e.key === 'Enter') addToken(); });
+
+(async function init(){
+  await loadWatchlist();
+  await renderTrending({ showLoading: true });
+
+  setInterval(() => {
+    renderTokens({ showLoading: false });
+    renderBinance({ showLoading: false });
+  }, DEX_REFRESH_MS);
+
+  setInterval(() => {
+    renderTrending({ showLoading: false });
+  }, TREND_REFRESH_MS);
+})();
+</script>
+</body>
+</html>
