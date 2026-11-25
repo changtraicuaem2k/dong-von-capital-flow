@@ -77,8 +77,9 @@ td input,td select{min-width:70px}td.n{text-align:right;font-variant-numeric:tab
 </div>
 
 <div class="card">
-<div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">Danh mục (dữ liệu mẫu, hãy thay bằng của bạn)</h2>
-<div class="row"><button id="add" class="p">Thêm mã</button><button id="rst">Đặt lại mẫu</button></div></div>
+<div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">Danh mục (gộp theo mã, giá hiện tại đang để bằng giá vốn tới khi cập nhật)</h2>
+<div class="row"><button id="ref" class="p">Cập nhật giá</button><button id="add">Thêm mã</button><button id="rst">Đặt lại mẫu</button></div></div>
+<div class="row mu" style="margin-bottom:8px"><label style="display:flex;gap:6px;align-items:center;margin:0"><input id="auto" type="checkbox" style="width:auto"> Tự cập nhật mỗi 10 phút</label><span id="st"></span></div>
 <div class="tbl"><table><thead><tr><th>Mã</th><th>Loại</th><th>Số lượng</th><th>Giá vốn (USD)</th><th>Giá hiện tại (USD)</th><th class="n">Giá trị</th><th class="n">Lãi lỗ</th><th class="n">Cần hồi để hòa vốn</th><th class="n">Tỷ trọng</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
 </div>
 
@@ -96,17 +97,21 @@ td input,td select{min-width:70px}td.n{text-align:right;font-variant-numeric:tab
 
 <script>
 const $=id=>document.getElementById(id);
-const DEF={fg:14,set:{tAlt:40,maxCoin:15,stopCoin:40,stopPF:25,minStable:15,btcSplit:50,stressAlt:20,stressBtc:10},rows:[
-{s:"BTC",t:"btc",q:0.03,b:95000,p:70000},
-{s:"USDT",t:"stable",q:400,b:1,p:1},
-{s:"ETH",t:"alt",q:1.2,b:3300,p:2100},
-{s:"SOL",t:"alt",q:20,b:180,p:110},
-{s:"LINK",t:"alt",q:100,b:20,p:13},
-{s:"DOGE",t:"alt",q:15000,b:0.25,p:0.1}]};
+const DEF={fg:14,set:{tAlt:40,maxCoin:15,stopCoin:40,stopPF:25,minStable:15,btcSplit:50,stressAlt:20,stressBtc:10},rows:[{s:"BTC",t:"btc",q:0.00472666,b:70726,p:70726},
+{s:"USDT",t:"stable",q:501,b:1,p:1},
+{s:"UNI",t:"alt",q:99.1655,b:5.282,p:5.282},
+{s:"ARB",t:"alt",q:6480.76,b:0.16648,p:0.16648},
+{s:"SUI",t:"alt",q:1196.6,b:0.931,p:0.931},
+{s:"EIGEN",t:"alt",q:3099,b:0.2106,p:0.2106},
+{s:"ALGO",t:"alt",q:4051,b:0.1061,p:0.1061},
+{s:"IOST",t:"alt",q:231116,b:0.0007903,p:0.0007903},
+{s:"BABY",t:"alt",q:37393,b:0.011819,p:0.011819},
+{s:"DOT",t:"alt",q:528,b:1.22,p:1.22},
+{s:"ENA",t:"alt",q:3212,b:0.1312,p:0.1312}]};
 const LBL={tAlt:["Mục tiêu tỷ trọng altcoin (%)"],maxCoin:["Trần mỗi altcoin (%)"],stopCoin:["Ngưỡng lỗ cần xem xét cắt (%)"],stopPF:["Ngưỡng lỗ cả danh mục (%)"],minStable:["USDT tối thiểu (%)"],btcSplit:["Phần chuyển sang BTC (%), còn lại USDT"]};
 let S=load()||JSON.parse(JSON.stringify(DEF));
-function load(){try{const x=localStorage.getItem("alloc_v1");return x?JSON.parse(x):null}catch(e){return null}}
-function save(){try{localStorage.setItem("alloc_v1",JSON.stringify(S))}catch(e){}}
+function load(){try{const x=localStorage.getItem("alloc_v2");return x?JSON.parse(x):null}catch(e){return null}}
+function save(){try{localStorage.setItem("alloc_v2",JSON.stringify(S))}catch(e){}}
 const m=n=>(n<0?"-":"")+"$"+Math.abs(n).toLocaleString("en-US",{maximumFractionDigits:0});
 const sg=n=>(n>0?"+":"")+n.toFixed(1)+"%";
 function zone(v){return v<=24?["Sợ hãi cực độ","Vùng hoảng loạn, thường gần đáy ngắn hạn nhưng không đảm bảo. Tránh bán toàn bộ một lần, hãy chia nhiều đợt và ưu tiên bán mã hết luận điểm. Không mua thêm altcoin để trung bình giá khi tỷ trọng altcoin đã vượt mục tiêu."]:v<=44?["Sợ hãi","Thị trường còn yếu. Ưu tiên giảm dần altcoin vào các nhịp hồi, giữ kỷ luật tỷ trọng."]:v<=55?["Trung tính","Giữ kỷ luật tỷ trọng và rebalance theo lịch, không cần hành động gấp."]:v<=74?["Tham lam","Nên giảm altcoin quá tay, chốt lời từng phần và tăng USDT."]:["Tham lam cực độ","Rủi ro đảo chiều cao. Chốt lời mạnh và nâng tỷ trọng BTC hoặc USDT."]}
@@ -118,7 +123,7 @@ const R=S.rows.map(r=>{const q=+r.q||0,b=+r.b||0,p=+r.p||0;return{...r,v:q*p,c:q
 const T=R.reduce((a,r)=>a+r.v,0),C=R.reduce((a,r)=>a+r.c,0);
 R.forEach((r,i)=>{r.w=T>0?r.v/T*100:0;const tr=$("r"+i);if(!tr)return;
 tr.querySelector(".v").textContent=m(r.v);
-const pe=tr.querySelector(".pn");pe.textContent=r.t=="stable"?"-":sg(r.pn);pe.className="n pn "+(r.pn<0?"neg":"pos");
+const pe=tr.querySelector(".pn");pe.textContent=r.t=="stable"?"-":(r.live?sg(r.pn):"chưa có giá");pe.className="n pn "+(!r.live?"mu":r.pn<0?"neg":"pos");
 tr.querySelector(".rc").textContent=r.pn<0&&r.t!="stable"?"+"+((1/(1+r.pn/100)-1)*100).toFixed(0)+"%":"-";
 tr.querySelector(".w").textContent=r.w.toFixed(1)+"%"});
 const sm=t=>R.filter(r=>r.t==t).reduce((a,r)=>a+r.v,0);
@@ -161,18 +166,43 @@ const sa=+s.stressAlt/100,sb=+s.stressBtc/100,t1=T-A*sa-B*sb,t2=T-(A-move)*sa-(B
 const d=x=>T>0?((x/T-1)*100):0;
 $("stress").innerHTML=`<div class="grid g2"><div><div class="mu">Giữ nguyên danh mục</div><div class="big neg">${m(t1)} (${sg(d(t1))})</div></div><div><div class="mu">Sau khi giảm altcoin về mục tiêu</div><div class="big neg">${m(t2)} (${sg(d(t2))})</div></div></div><p class="mu">Chênh lệch bảo toàn được: ${m(t2-t1)}.</p>`;
 }
+let last=0,tm=null;
+async function jget(u){const c=new AbortController(),x=setTimeout(()=>c.abort(),8000);try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw new Error(r.status);return await r.json()}finally{clearTimeout(x)}}
+function setAuto(on){clearInterval(tm);if(on)tm=setInterval(refresh,600000);S.auto=on;save()}
+const CG={BTC:"bitcoin",ETH:"ethereum",SOL:"solana",UNI:"uniswap",ARB:"arbitrum",SUI:"sui",EIGEN:"eigenlayer",ALGO:"algorand",IOST:"iostoken",BABY:"babylon",DOT:"polkadot",ENA:"ethena",LINK:"chainlink",DOGE:"dogecoin",BNB:"binancecoin",XRP:"ripple",ADA:"cardano",AVAX:"avalanche-2",TON:"the-open-network"};
+const bin=u=>async()=>{const a=await jget(u+"/api/v3/ticker/price"),m={};a.forEach(o=>{if(o.symbol.endsWith("USDT"))m[o.symbol.slice(0,-4)]=+o.price});return m};
+const SRC=[["Binance",bin("https://api.binance.com")],
+["Bybit",async()=>{const a=await jget("https://api.bybit.com/v5/market/tickers?category=spot"),m={};a.result.list.forEach(o=>{if(o.symbol.endsWith("USDT"))m[o.symbol.slice(0,-4)]=+o.lastPrice});return m}],
+["OKX",async()=>{const a=await jget("https://www.okx.com/api/v5/market/tickers?instType=SPOT"),m={};a.data.forEach(o=>{if(o.instId.endsWith("-USDT"))m[o.instId.slice(0,-5)]=+o.last});return m}],
+["Binance Vision",bin("https://data-api.binance.vision")],
+["CoinGecko",async()=>{const a=await jget("https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids="+Object.values(CG).join(",")),m={};for(const k in CG)if(a[CG[k]])m[k]=a[CG[k]].usd;return m}]];
+const key=r=>(r.s||"").trim().toUpperCase();
+async function refresh(){
+const st=$("st");st.textContent="Đang cập nhật giá...";
+const need=S.rows.filter(r=>r.t!="stable"&&key(r)),got={},used=[],failed=[];
+for(const [n,f] of SRC){if(need.every(r=>got[key(r)]))break;try{const m=await f();used.push(n);need.forEach(r=>{const k=key(r);if(!got[k]&&m[k]>0)got[k]=m[k]})}catch(e){failed.push(n)}}
+let fgOk=false;
+try{const f=await jget("https://api.alternative.me/fng/?limit=1");const v=+f.data[0].value;if(v>=0&&v<=100){fgOk=true;if(v!==S.fgSrc){S.fgSrc=v;S.fg=v;$("fg").value=v}}}catch(e){}
+if(!used.length&&!fgOk){st.textContent="Không lấy được giá tự động (thử: "+failed.join(", ")+"). Nếu mở trong claude.ai thì kết nối ra ngoài bị chặn, hãy dùng bản tự host hoặc nhập tay. Nếu đã tự host, thử tắt VPN hoặc bộ chặn quảng cáo.";return}
+let ok=0,miss=[];
+S.rows.forEach((r,i)=>{if(r.t=="stable")return;const p=got[key(r)];if(p>0){r.p=p;r.live=true;ok++;const el=document.querySelector("#r"+i+" input[data-k=p]");if(el)el.value=p}else if(key(r))miss.push(r.s)});
+last=Date.now();save();calc();
+st.textContent="Cập nhật lúc "+new Date().toLocaleTimeString("vi-VN")+" · "+ok+" mã từ "+used.join(", ")+(miss.length?" · nhập tay: "+miss.join(", "):"")+(fgOk?" · chỉ số từ alternative.me":"");
+}
 function bind(){
 document.addEventListener("input",e=>{const t=e.target;
+if(t.id=="auto"){setAuto(t.checked);return}
 if(t.id=="fg"){S.fg=+t.value;save();calc();return}
 if(t.dataset.s){S.set[t.dataset.s]=+t.value;save();calc();return}
-if(t.dataset.i!=null){const r=S.rows[+t.dataset.i];r[t.dataset.k]=t.dataset.k=="s"||t.dataset.k=="t"?t.value:t.value;save();calc()}});
+if(t.dataset.i!=null){const r=S.rows[+t.dataset.i];r[t.dataset.k]=t.dataset.k=="s"||t.dataset.k=="t"?t.value:t.value;if(t.dataset.k=="p")r.live=true;save();calc()}});
 document.addEventListener("click",e=>{const t=e.target;
 if(t.dataset.del!=null){S.rows.splice(+t.dataset.del,1);save();renderRows();calc()}
+if(t.id=="ref"){refresh();return}
 if(t.id=="add"){S.rows.push({s:"",t:"alt",q:0,b:0,p:0});save();renderRows();calc()}
 if(t.id=="rst"){S=JSON.parse(JSON.stringify(DEF));save();init()}});
 }
-function init(){$("fg").value=S.fg;renderSettings();renderRows();$("sa").value=S.set.stressAlt;$("sb").value=S.set.stressBtc;calc()}
-bind();init();
+function init(){$("auto").checked=S.auto!==false;$("fg").value=S.fg;renderSettings();renderRows();$("sa").value=S.set.stressAlt;$("sb").value=S.set.stressBtc;calc()}
+bind();init();setAuto(S.auto!==false);refresh();document.addEventListener("visibilitychange",()=>{if(!document.hidden&&Date.now()-last>120000)refresh()});
 </script>
 </body>
 </html>
